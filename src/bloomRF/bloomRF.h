@@ -41,10 +41,13 @@ private:
     /// delta -- distance between bloomRF layers.
     explicit BloomRF(size_t size_, size_t hashes_, size_t seed_, uint16_t delta_);
 
+    /// Returns size in bits.
+    size_t size() {
+        return 8 * sizeof(UnderType) * filter.size();
+    }
 
     size_t bloomRFHash(T data, size_t i);
 
-    size_t size;
     size_t hashes;
     size_t seed;
     size_t words;
