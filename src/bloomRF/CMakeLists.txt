@@ -1,5 +1,1 @@
-add_library(
-    bloomRF
-    STATIC
-    bloomRF.cpp
-)
+add_library(bloomRF STATIC bloomRF.cpp)
