@@ -1,6 +1,7 @@
 #include "bloomRF/bloomRF.h"
 
 #include <gtest/gtest.h>
+#include <iomanip>
 #include <limits>
 #include <random>
 #include <unordered_set>
@@ -27,7 +28,7 @@ class BloomFilterTest : public ::testing::Test {
     }
   }
   std::unordered_set<uint64_t> s;
-  BloomRF<uint64_t> bf{BloomFilterRFParameters{12000, 7, 0, 4}};
+  BloomRF<uint64_t> bf{BloomFilterRFParameters{18000, 6, 0, 4}};
 };
 
 TEST_F(BloomFilterTest, NoFalseNegatives) {
@@ -38,7 +39,7 @@ TEST_F(BloomFilterTest, NoFalseNegatives) {
 
 TEST_F(BloomFilterTest, FalsePositiveRateBound) {
   int false_positives = 0;
-  int denominator = 1000000;
+  int denominator = 10000;
   int true_positive = 0;
   for (int i = 0; i < denominator; ++i) {
     if (s.find(i) == s.end()) {
@@ -49,6 +50,8 @@ TEST_F(BloomFilterTest, FalsePositiveRateBound) {
       ++true_positive;
     }
   }
-  std::cout << static_cast<double>(false_positives) / static_cast<double>(denominator - true_positive) << std::endl;
+  auto fp = static_cast<double>(false_positives) / static_cast<double>(denominator - true_positive);
+
+  ASSERT_LE(fp, .01) << std::setprecision(4) << "False Positive Rate: " << fp;
 
 }

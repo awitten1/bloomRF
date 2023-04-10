@@ -30,8 +30,8 @@ BloomRF<T>::BloomRF(const BloomFilterRFParameters &params)
 template <typename T> size_t BloomRF<T>::bloomRFHash(T data, size_t i) {
 
   auto hash = this->hash(data >> (delta - 1), i);
-  return (hash % (numBits() >> (delta - 1)))
-         << (delta - 1) + (data & (1 << (delta - 1)) - 1);
+  return ((hash % (numBits() >> (delta - 1))) << (delta - 1)) 
+    + (data & (1 << (delta - 1)) - 1);
 }
 
 template <typename T> size_t BloomRF<T>::hash(T data, size_t i) {
@@ -46,7 +46,7 @@ template <typename T> size_t BloomRF<T>::hash(T data, size_t i) {
 
 template <typename T> void BloomRF<T>::add(T data) {
   for (size_t i = 0; i < hashes; ++i) {
-    size_t pos = hash(data, i) % numBits();
+    size_t pos = bloomRFHash(data, i) % numBits();
     filter[pos / (8 * sizeof(UnderType))] |=
         (1ULL << (pos % (8 * sizeof(UnderType))));
     data >>= delta;
@@ -55,7 +55,7 @@ template <typename T> void BloomRF<T>::add(T data) {
 
 template <typename T> bool BloomRF<T>::find(T data) {
   for (size_t i = 0; i < hashes; ++i) {
-    size_t pos = hash(data, i) % numBits();
+    size_t pos = bloomRFHash(data, i) % numBits();
     if (!(filter[pos / (8 * sizeof(UnderType))] &
           (1ULL << (pos % (8 * sizeof(UnderType)))))) {
       return false;
