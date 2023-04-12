@@ -21,3 +21,13 @@ target_link_libraries(
 
 include(GoogleTest)
 gtest_discover_tests(test_bloomrf)
+
+add_executable(
+  experiments
+  experiments.cpp
+)
+
+target_link_libraries(
+  experiments
+  bloomRF
+)

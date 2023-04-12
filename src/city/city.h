@@ -1,10 +1,10 @@
 // Copyright (c) 2011 Google, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
+// of this software and associated documentation files (the "Software"), to
+// deal in the Software without restriction, including without limitation the
+// rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+// sell copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
 //
 // The above copyright notice and this permission notice shall be included in
@@ -14,9 +14,9 @@
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 // AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-// THE SOFTWARE.
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+// IN THE SOFTWARE.
 //
 // CityHash, by Geoff Pike and Jyrki Alakuijala
 //
@@ -29,31 +29,36 @@
 
 #pragma once
 
+#include <string.h>  // for memcpy and memset
+
 #include <algorithm>
-#include <string.h> // for memcpy and memset
 
 using namespace std;
 
 using uint128 = std::pair<uint64_t, uint64_t>;
 
-static uint64_t UNALIGNED_LOAD64(const char *p) {
+static uint64_t UNALIGNED_LOAD64(const char* p) {
   uint64_t result;
   memcpy(&result, p, sizeof(result));
   return result;
 }
 
-static uint32_t UNALIGNED_LOAD32(const char *p) {
+static uint32_t UNALIGNED_LOAD32(const char* p) {
   uint32_t result;
   memcpy(&result, p, sizeof(result));
   return result;
 }
 
-inline uint64_t Uint128Low64(const uint128 &x) { return x.first; }
-inline uint64_t Uint128High64(const uint128 &x) { return x.second; }
+inline uint64_t Uint128Low64(const uint128& x) {
+  return x.first;
+}
+inline uint64_t Uint128High64(const uint128& x) {
+  return x.second;
+}
 
 // Hash 128 input bits down to 64 bits of output.
 // This is intended to be a reasonably good hash function.
-inline uint64_t Hash128to64(const uint128 &x) {
+inline uint64_t Hash128to64(const uint128& x) {
   // Murmur-inspired hashing.
   const uint64_t kMul = 0x9ddfea08eb382d69ULL;
   uint64_t a = (Uint128Low64(x) ^ Uint128High64(x)) * kMul;
@@ -126,11 +131,11 @@ inline uint64_t Hash128to64(const uint128 &x) {
 #endif
 #endif
 
-static uint64_t Fetch64(const char *p) {
+static uint64_t Fetch64(const char* p) {
   return uint64_t_in_expected_order(UNALIGNED_LOAD64(p));
 }
 
-static uint32_t Fetch32(const char *p) {
+static uint32_t Fetch32(const char* p) {
   return uint32_t_in_expected_order(UNALIGNED_LOAD32(p));
 }
 
@@ -159,10 +164,10 @@ static uint32_t Rotate32(uint32_t val, int shift) {
 }
 
 #undef PERMUTE3
-#define PERMUTE3(a, b, c)                                                      \
-  do {                                                                         \
-    std::swap(a, b);                                                           \
-    std::swap(a, c);                                                           \
+#define PERMUTE3(a, b, c) \
+  do {                    \
+    std::swap(a, b);      \
+    std::swap(a, c);      \
   } while (0)
 
 static uint32_t Mur(uint32_t a, uint32_t h) {
@@ -175,7 +180,7 @@ static uint32_t Mur(uint32_t a, uint32_t h) {
   return h * 5 + 0xe6546b64;
 }
 
-static uint32_t Hash32Len13to24(const char *s, size_t len) {
+static uint32_t Hash32Len13to24(const char* s, size_t len) {
   uint32_t a = Fetch32(s - 4 + (len >> 1));
   uint32_t b = Fetch32(s + 4);
   uint32_t c = Fetch32(s + len - 8);
@@ -187,7 +192,7 @@ static uint32_t Hash32Len13to24(const char *s, size_t len) {
   return fmix(Mur(f, Mur(e, Mur(d, Mur(c, Mur(b, Mur(a, h)))))));
 }
 
-static uint32_t Hash32Len0to4(const char *s, size_t len) {
+static uint32_t Hash32Len0to4(const char* s, size_t len) {
   uint32_t b = 0;
   uint32_t c = 9;
   for (size_t i = 0; i < len; i++) {
@@ -198,7 +203,7 @@ static uint32_t Hash32Len0to4(const char *s, size_t len) {
   return fmix(Mur(b, Mur(static_cast<uint32_t>(len), c)));
 }
 
-static uint32_t Hash32Len5to12(const char *s, size_t len) {
+static uint32_t Hash32Len5to12(const char* s, size_t len) {
   uint32_t a = static_cast<uint32_t>(len), b = a * 5, c = 9, d = b;
   a += Fetch32(s);
   b += Fetch32(s + len - 4);
@@ -206,7 +211,7 @@ static uint32_t Hash32Len5to12(const char *s, size_t len) {
   return fmix(Mur(c, Mur(b, Mur(a, d))));
 }
 
-inline uint32_t CityHash32(const char *s, size_t len) {
+inline uint32_t CityHash32(const char* s, size_t len) {
   if (len <= 24) {
     return len <= 12
                ? (len <= 4 ? Hash32Len0to4(s, len) : Hash32Len5to12(s, len))
@@ -282,7 +287,9 @@ static uint64_t Rotate(uint64_t val, int shift) {
   return shift == 0 ? val : ((val >> shift) | (val << (64 - shift)));
 }
 
-static uint64_t ShiftMix(uint64_t val) { return val ^ (val >> 47); }
+static uint64_t ShiftMix(uint64_t val) {
+  return val ^ (val >> 47);
+}
 
 static uint64_t HashLen16(uint64_t u, uint64_t v) {
   return Hash128to64(uint128(u, v));
@@ -298,7 +305,7 @@ static uint64_t HashLen16(uint64_t u, uint64_t v, uint64_t mul) {
   return b;
 }
 
-static uint64_t HashLen0to16(const char *s, size_t len) {
+static uint64_t HashLen0to16(const char* s, size_t len) {
   if (len >= 8) {
     uint64_t mul = k2 + len * 2;
     uint64_t a = Fetch64(s) + k2;
@@ -325,7 +332,7 @@ static uint64_t HashLen0to16(const char *s, size_t len) {
 
 // This probably works well for 16-byte strings as well, but it may be overkill
 // in that case.
-static uint64_t HashLen17to32(const char *s, size_t len) {
+static uint64_t HashLen17to32(const char* s, size_t len) {
   uint64_t mul = k2 + len * 2;
   uint64_t a = Fetch64(s) * k1;
   uint64_t b = Fetch64(s + 8);
@@ -337,9 +344,12 @@ static uint64_t HashLen17to32(const char *s, size_t len) {
 
 // Return a 16-byte hash for 48 bytes.  Quick and dirty.
 // Callers do best to use "random-looking" values for a and b.
-static pair<uint64_t, uint64_t> WeakHashLen32WithSeeds(uint64_t w, uint64_t x,
-                                                       uint64_t y, uint64_t z,
-                                                       uint64_t a, uint64_t b) {
+static pair<uint64_t, uint64_t> WeakHashLen32WithSeeds(uint64_t w,
+                                                       uint64_t x,
+                                                       uint64_t y,
+                                                       uint64_t z,
+                                                       uint64_t a,
+                                                       uint64_t b) {
   a += w;
   b = Rotate(b + a + z, 21);
   uint64_t c = a;
@@ -350,14 +360,15 @@ static pair<uint64_t, uint64_t> WeakHashLen32WithSeeds(uint64_t w, uint64_t x,
 }
 
 // Return a 16-byte hash for s[0] ... s[31], a, and b.  Quick and dirty.
-static pair<uint64_t, uint64_t> WeakHashLen32WithSeeds(const char *s,
-                                                       uint64_t a, uint64_t b) {
+static pair<uint64_t, uint64_t> WeakHashLen32WithSeeds(const char* s,
+                                                       uint64_t a,
+                                                       uint64_t b) {
   return WeakHashLen32WithSeeds(Fetch64(s), Fetch64(s + 8), Fetch64(s + 16),
                                 Fetch64(s + 24), a, b);
 }
 
 // Return an 8-byte hash for 33 to 64 bytes.
-static uint64_t HashLen33to64(const char *s, size_t len) {
+static uint64_t HashLen33to64(const char* s, size_t len) {
   uint64_t mul = k2 + len * 2;
   uint64_t a = Fetch64(s) * k2;
   uint64_t b = Fetch64(s + 8);
@@ -378,7 +389,7 @@ static uint64_t HashLen33to64(const char *s, size_t len) {
   return b + x;
 }
 
-inline uint64_t CityHash64(const char *s, size_t len) {
+inline uint64_t CityHash64(const char* s, size_t len) {
   if (len <= 32) {
     if (len <= 16) {
       return HashLen0to16(s, len);
@@ -416,18 +427,20 @@ inline uint64_t CityHash64(const char *s, size_t len) {
                    HashLen16(v.second, w.second) + x);
 }
 
-inline uint64_t CityHash64WithSeeds(const char *s, size_t len, uint64_t seed0,
+inline uint64_t CityHash64WithSeeds(const char* s,
+                                    size_t len,
+                                    uint64_t seed0,
                                     uint64_t seed1) {
   return HashLen16(CityHash64(s, len) - seed0, seed1);
 }
 
-inline uint64_t CityHash64WithSeed(const char *s, size_t len, uint64_t seed) {
+inline uint64_t CityHash64WithSeed(const char* s, size_t len, uint64_t seed) {
   return CityHash64WithSeeds(s, len, k2, seed);
 }
 
 // A subroutine for CityHash128().  Returns a decent 128-bit hash for strings
 // of any length representable in signed long.  Based on City and Murmur.
-static uint128 CityMurmur(const char *s, size_t len, uint128 seed) {
+static uint128 CityMurmur(const char* s, size_t len, uint128 seed) {
   uint64_t a = Uint128Low64(seed);
   uint64_t b = Uint128High64(seed);
   uint64_t c = 0;
@@ -457,7 +470,7 @@ static uint128 CityMurmur(const char *s, size_t len, uint128 seed) {
   return uint128(a ^ b, HashLen16(b, a));
 }
 
-inline uint128 CityHash128WithSeed(const char *s, size_t len, uint128 seed) {
+inline uint128 CityHash128WithSeed(const char* s, size_t len, uint128 seed) {
   if (len < 128) {
     return CityMurmur(s, len, seed);
   }
@@ -520,7 +533,7 @@ inline uint128 CityHash128WithSeed(const char *s, size_t len, uint128 seed) {
                  HashLen16(x + w.second, y + v.second));
 }
 
-inline uint128 CityHash128(const char *s, size_t len) {
+inline uint128 CityHash128(const char* s, size_t len) {
   return len >= 16
              ? CityHash128WithSeed(s + 16, len - 16,
                                    uint128(Fetch64(s), Fetch64(s + 8) + k0))
@@ -532,8 +545,10 @@ inline uint128 CityHash128(const char *s, size_t len) {
 #include <nmmintrin.h>
 
 // Requires len >= 240.
-static void CityHashCrc256Long(const char *s, size_t len, uint32_t seed,
-                               uint64_t *result) {
+static void CityHashCrc256Long(const char* s,
+                               size_t len,
+                               uint32_t seed,
+                               uint64_t* result) {
   uint64_t a = Fetch64(s + 56) + k0;
   uint64_t b = Fetch64(s + 96) + k0;
   uint64_t c = result[0] = HashLen16(b, len);
@@ -551,25 +566,25 @@ static void CityHashCrc256Long(const char *s, size_t len, uint32_t seed,
   len -= iters * 240;
   do {
 #undef CHUNK
-#define CHUNK(r)                                                               \
-  PERMUTE3(x, z, y);                                                           \
-  b += Fetch64(s);                                                             \
-  c += Fetch64(s + 8);                                                         \
-  d += Fetch64(s + 16);                                                        \
-  e += Fetch64(s + 24);                                                        \
-  f += Fetch64(s + 32);                                                        \
-  a += b;                                                                      \
-  h += f;                                                                      \
-  b += c;                                                                      \
-  f += d;                                                                      \
-  g += e;                                                                      \
-  e += z;                                                                      \
-  g += x;                                                                      \
-  z = _mm_crc32_u64(z, b + g);                                                 \
-  y = _mm_crc32_u64(y, e + h);                                                 \
-  x = _mm_crc32_u64(x, f + a);                                                 \
-  e = Rotate(e, r);                                                            \
-  c += e;                                                                      \
+#define CHUNK(r)               \
+  PERMUTE3(x, z, y);           \
+  b += Fetch64(s);             \
+  c += Fetch64(s + 8);         \
+  d += Fetch64(s + 16);        \
+  e += Fetch64(s + 24);        \
+  f += Fetch64(s + 32);        \
+  a += b;                      \
+  h += f;                      \
+  b += c;                      \
+  f += d;                      \
+  g += e;                      \
+  e += z;                      \
+  g += x;                      \
+  z = _mm_crc32_u64(z, b + g); \
+  y = _mm_crc32_u64(y, e + h); \
+  x = _mm_crc32_u64(x, f + a); \
+  e = Rotate(e, r);            \
+  c += e;                      \
   s += 40
 
     CHUNK(0);
@@ -626,14 +641,14 @@ static void CityHashCrc256Long(const char *s, size_t len, uint32_t seed,
 }
 
 // Requires len < 240.
-static void CityHashCrc256Short(const char *s, size_t len, uint64_t *result) {
+static void CityHashCrc256Short(const char* s, size_t len, uint64_t* result) {
   char buf[240];
   memcpy(buf, s, len);
   memset(buf + len, 0, 240 - len);
   CityHashCrc256Long(buf, 240, ~static_cast<uint32_t>(len), result);
 }
 
-void CityHashCrc256(const char *s, size_t len, uint64_t *result) {
+void CityHashCrc256(const char* s, size_t len, uint64_t* result) {
   if (LIKELY(len >= 240)) {
     CityHashCrc256Long(s, len, 0, result);
   } else {
@@ -641,7 +656,7 @@ void CityHashCrc256(const char *s, size_t len, uint64_t *result) {
   }
 }
 
-uint128 CityHashCrc128WithSeed(const char *s, size_t len, uint128 seed) {
+uint128 CityHashCrc128WithSeed(const char* s, size_t len, uint128 seed) {
   if (len <= 900) {
     return CityHash128WithSeed(s, len, seed);
   } else {
@@ -654,7 +669,7 @@ uint128 CityHashCrc128WithSeed(const char *s, size_t len, uint128 seed) {
   }
 }
 
-uint128 CityHashCrc128(const char *s, size_t len) {
+uint128 CityHashCrc128(const char* s, size_t len) {
   if (len <= 900) {
     return CityHash128(s, len);
   } else {

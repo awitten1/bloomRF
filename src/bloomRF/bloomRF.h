@@ -1,12 +1,15 @@
-#include "city/city.h"
-#include <vector>
 #include <iostream>
+#include <vector>
+
+#include "city/city.h"
 
 namespace filters {
 
 struct BloomFilterRFParameters {
-  BloomFilterRFParameters(size_t filter_size_, size_t filter_hashes_,
-                          size_t seed_, uint16_t delta_);
+  BloomFilterRFParameters(size_t filter_size_,
+                          size_t filter_hashes_,
+                          size_t seed_,
+                          uint16_t delta_);
 
   /// size of filter in bytes.
   size_t filter_size;
@@ -18,12 +21,13 @@ struct BloomFilterRFParameters {
   uint16_t delta;
 };
 
-template <typename T> class BloomRF {
-public:
+template <typename T>
+class BloomRF {
+ public:
   using UnderType = uint64_t;
   using Container = std::vector<UnderType>;
 
-  explicit BloomRF(const BloomFilterRFParameters &params);
+  explicit BloomRF(const BloomFilterRFParameters& params);
 
   void add(T data);
 
@@ -31,10 +35,10 @@ public:
 
   bool findRange(T low, T high);
 
-  const Container &getFilter() const { return filter; }
-  Container &getFilter() { return filter; }
+  const Container& getFilter() const { return filter; }
+  Container& getFilter() { return filter; }
 
-private:
+ private:
   /// size -- size of filter in bytes.
   /// hashes -- number of used hash functions.
   /// seed -- random seed for hash functions generation.
@@ -56,12 +60,12 @@ private:
   Container filter;
 };
 
-template<typename T>
+template <typename T>
 size_t bloomRFSize(const BloomRF<T>& bf) {
   std::cout << sizeof(T) << std::endl;
-    std::cout << bf.getFilter().size() << std::endl;
+  std::cout << bf.getFilter().size() << std::endl;
 
   return (bf.getFilter().size() * sizeof(T));
 }
 
-} // namespace filters
+}  // namespace filters
