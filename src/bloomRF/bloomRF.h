@@ -39,26 +39,39 @@ class BloomRF {
   Container& getFilter() { return filter; }
 
  private:
-  /// size -- size of filter in bytes.
-  /// hashes -- number of used hash functions.
-  /// seed -- random seed for hash functions generation.
-  /// delta -- distance between bloomRF layers.
+
   explicit BloomRF(size_t size_, size_t hashes_, size_t seed_, uint16_t delta_);
 
   /// Returns size in bits.
   size_t numBits() { return 8 * sizeof(UnderType) * filter.size(); }
 
+  /// Computes the ith PMHF hash of data in terms of ith generic hash.
   size_t bloomRFHash(T data, size_t i);
 
   size_t hash(T data, size_t i);
 
+
+  /// Number of hash functions.
   size_t hashes;
+
+  /// Seed of hash functions.
   size_t seed;
+
+
   size_t words;
+
+  /// Distance between layers.
   uint16_t delta;
+
+  /// Size of the domain in bits.
+  uint16_t domain_size = 8 * sizeof(T);
 
   Container filter;
 };
+
+/// Decompose the range [low, high] into dyadic intervals.
+template<typename T>
+std::vector<std::vector<T>> decomposeIntoDyadicIntervals(T low, T high);
 
 template <typename T>
 size_t bloomRFSize(const BloomRF<T>& bf) {

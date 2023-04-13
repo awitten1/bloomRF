@@ -1,4 +1,10 @@
 #include "bloomRF.h"
+#include <_types/_uint64_t.h>
+#include <limits>
+#include <stdexcept>
+#include <utility>
+#include <vector>
+#include <exception>
 
 namespace filters {
 
@@ -8,6 +14,7 @@ constexpr uint64_t SEED_GEN_A = 845897321;
 constexpr uint64_t SEED_GEN_B = 217728422;
 
 constexpr uint64_t MAX_BLOOM_FILTER_SIZE = 1 << 30;
+
 
 }  // namespace
 
@@ -72,6 +79,40 @@ bool BloomRF<T>::find(T data) {
   return true;
 }
 
+template<typename T>
+std::vector<std::vector<T>> decomposeIntoDyadicIntervals(T lkey, T hkey) {
+  if (lkey > hkey) {
+    throw std::logic_error{"lkey must be less than hkey."};
+  }
+  uint16_t domain_width = sizeof(T) * 8;
+
+  std::vector<std::vector<T>> ret(domain_width);
+
+  uint16_t iterations = 0;
+
+  T mid;
+  T low = 0;
+  T high = ~low;
+
+  for (; ;) {
+    ret[iterations].push_back(low);
+
+    mid = high - ((high - low) >> 1);
+    if (mid <= lkey) {
+      low = mid;
+    } else if (mid >= hkey) {
+      high = mid - 1;
+    } else {
+      break;
+    }
+    ++iterations;
+  }
+  assert(mid > lkey && mid < hkey);
+  return ret;
+}
+
+
+
 template <typename T>
 BloomRF<T>::BloomRF(size_t size_, size_t hashes_, size_t seed_, uint16_t delta_)
     : hashes(hashes_),
@@ -83,5 +124,7 @@ BloomRF<T>::BloomRF(size_t size_, size_t hashes_, size_t seed_, uint16_t delta_)
 template class BloomRF<uint16_t>;
 template class BloomRF<uint32_t>;
 template class BloomRF<uint64_t>;
+
+template std::vector<std::vector<uint64_t>> decomposeIntoDyadicIntervals<uint64_t>(uint64_t, uint64_t);
 
 }  // namespace filters
