@@ -1,7 +1,11 @@
+#include <_types/_uint16_t.h>
+#include <_types/_uint64_t.h>
+#include <algorithm>
 #include <gtest/gtest.h>
 
 #include <iomanip>
 #include <limits>
+#include <ostream>
 #include <random>
 #include <unordered_set>
 
@@ -36,3 +40,27 @@ TEST_F(BloomFilterUniformTest, NoFalseNegatives) {
     ASSERT_TRUE(bf.find(*it));
   }
 }
+
+template<typename T>
+void printBinary(T t) {
+  std::cerr << t << ": ";
+  std::vector<int> print;
+  while(t > 0) {
+    print.push_back(t % 2);
+    t >>= 1;
+  }
+  std::reverse(print.begin(), print.end());
+  std::copy(print.begin(), print.end(), std::ostream_iterator<int>(std::cerr));
+}
+
+TEST(decomposeDyadicIntervals, Basic) {
+  auto x = filters::decomposeIntoDyadicIntervals<uint64_t>(45, 60);
+  for (auto layer : x) {
+    for (auto prefix : layer) {
+      printBinary(prefix);
+      std::cerr << ", ";
+    }
+    std::cerr << std::endl;
+  }
+}
+
