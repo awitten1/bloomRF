@@ -1,5 +1,6 @@
 #include "bloomRF.h"
 #include <_types/_uint64_t.h>
+#include <_types/_uint8_t.h>
 #include <limits>
 #include <stdexcept>
 #include <utility>
@@ -14,6 +15,8 @@ constexpr uint64_t SEED_GEN_A = 845897321;
 constexpr uint64_t SEED_GEN_B = 217728422;
 
 constexpr uint64_t MAX_BLOOM_FILTER_SIZE = 1 << 30;
+
+
 
 
 }  // namespace
@@ -94,6 +97,7 @@ std::vector<std::vector<T>> decomposeIntoDyadicIntervals(T lkey, T hkey) {
   T low = 0;
   T high = ~low;
 
+  // Phase 1: Descend through DIs that fully cover the target range.
   for (; ;) {
     ret[iterations].push_back(low);
 
@@ -108,6 +112,42 @@ std::vector<std::vector<T>> decomposeIntoDyadicIntervals(T lkey, T hkey) {
     ++iterations;
   }
   assert(mid > lkey && mid < hkey);
+
+  // Phase 2: Descend left and then descend right.
+  uint8_t iterations_copy = iterations;
+  T left_low = low, left_high = mid;
+  for (; ;) {
+    T left_mid = left_high - ((left_high - left_low) >> 1);
+    if (lkey < left_mid) {
+      ret[iterations_copy].push_back(left_mid);
+      left_high = left_mid;
+      ++iterations_copy;
+    } else if (lkey > left_mid) {
+      left_low = left_mid;
+      ++iterations_copy;
+    } else {
+      ret[iterations_copy].push_back(left_mid);
+      break;
+    }
+  }
+
+  T right_low = mid, right_high = high;
+  for (; ;) {
+    T right_mid = right_high - ((right_high - right_low) >> 1);
+    if (hkey > right_mid) {
+      ret[iterations].push_back(right_low);
+      right_low = right_mid;
+      ++iterations;
+    } else if (hkey < right_mid) {
+      right_high = right_mid - 1;
+      ++iterations;
+    } else {
+      ret[iterations].push_back(right_low);
+      break;
+    }
+  }
+
+
   return ret;
 }
 
