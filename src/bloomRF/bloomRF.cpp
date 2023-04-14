@@ -100,6 +100,7 @@ std::vector<std::vector<T>> decomposeIntoDyadicIntervals(T lkey, T hkey) {
   // Phase 1: Descend through DIs that fully cover the target range.
   for (; ;) {
     ret[iterations].push_back(low);
+    ++iterations;
 
     mid = high - ((high - low) >> 1);
     if (mid <= lkey) {
@@ -109,7 +110,6 @@ std::vector<std::vector<T>> decomposeIntoDyadicIntervals(T lkey, T hkey) {
     } else {
       break;
     }
-    ++iterations;
   }
   assert(mid > lkey && mid < hkey);
 
@@ -117,10 +117,10 @@ std::vector<std::vector<T>> decomposeIntoDyadicIntervals(T lkey, T hkey) {
   uint8_t iterations_copy = iterations;
   T left_low = low, left_high = mid;
   for (; ;) {
-    T left_mid = left_high - ((left_high - left_low) >> 1);
+    T left_mid = left_low + ((left_high - left_low) >> 1);
     if (lkey < left_mid) {
       ret[iterations_copy].push_back(left_mid);
-      left_high = left_mid;
+      left_high = left_mid + 1;
       ++iterations_copy;
     } else if (lkey > left_mid) {
       left_low = left_mid;
@@ -133,13 +133,15 @@ std::vector<std::vector<T>> decomposeIntoDyadicIntervals(T lkey, T hkey) {
 
   T right_low = mid, right_high = high;
   for (; ;) {
-    T right_mid = right_high - ((right_high - right_low) >> 1);
+    T right_mid = right_low + ((right_high - right_low) >> 1);
+    std::cerr << right_low << ", " << right_mid << ", " << right_high << std::endl;
+
     if (hkey > right_mid) {
       ret[iterations].push_back(right_low);
-      right_low = right_mid;
+      right_low = right_mid + 1;
       ++iterations;
     } else if (hkey < right_mid) {
-      right_high = right_mid - 1;
+      right_high = right_mid;
       ++iterations;
     } else {
       ret[iterations].push_back(right_low);

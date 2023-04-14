@@ -55,8 +55,10 @@ void printBinary(T t) {
 
 TEST(decomposeDyadicIntervals, Basic) {
   auto x = filters::decomposeIntoDyadicIntervals<uint64_t>(45, 60);
-  for (auto layer : x) {
-    for (auto prefix : layer) {
+  for (int i = 0; i < x.size(); ++i) {
+    std::cerr << i << ": " << std::endl;
+
+    for (auto prefix : x[i]) {
       printBinary(prefix);
       std::cerr << ", ";
     }
