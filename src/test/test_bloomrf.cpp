@@ -1,7 +1,7 @@
 #include <_types/_uint16_t.h>
 #include <_types/_uint64_t.h>
-#include <algorithm>
 #include <gtest/gtest.h>
+#include <algorithm>
 
 #include <iomanip>
 #include <limits>
@@ -41,11 +41,11 @@ TEST_F(BloomFilterUniformTest, NoFalseNegatives) {
   }
 }
 
-template<typename T>
+template <typename T>
 void printBinary(T t) {
   std::cerr << t << ": ";
   std::vector<int> print;
-  while(t > 0) {
+  while (t > 0) {
     print.push_back(t % 2);
     t >>= 1;
   }
@@ -65,4 +65,3 @@ TEST(decomposeDyadicIntervals, Basic) {
     std::cerr << std::endl;
   }
 }
-
