@@ -1,3 +1,5 @@
+#include <_types/_uint16_t.h>
+#include <cstddef>
 #include <iostream>
 #include <vector>
 
@@ -39,6 +41,33 @@ class BloomRF {
   Container& getFilter() { return filter; }
 
  private:
+
+  class Checks {
+  public:
+    Checks(T lkey_, T hkey_, uint8_t delta_, size_t num_hashes_) : lkey(lkey_),
+          hkey(hkey_), delta(delta_), num_hashes(num_hashes_) {}
+    const std::vector<std::pair<T, T>>& getChecks() {
+      return checks;
+    }
+
+    void init_checks();
+
+  private:
+    struct Check {
+      Check(T low_, T high_, bool is_covering_, bool on_left_) :
+        low{low_}, high{high_}, is_covering{is_covering_}, on_left{on_left_} {}
+      T low;
+      T high;
+      bool is_covering;
+      bool on_left; // is this check on the left?
+    };
+    std::vector<Check> checks;
+    size_t domain_width = 8 * sizeof(T);
+    T lkey;
+    T hkey;
+    uint16_t delta;
+    size_t num_hashes;
+  };
 
   explicit BloomRF(size_t size_, size_t hashes_, size_t seed_, uint16_t delta_);
 
