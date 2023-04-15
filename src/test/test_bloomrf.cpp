@@ -31,8 +31,10 @@ class BloomFilterUniformTest : public ::testing::Test {
       bf.add(x);
     }
   }
+  // Keep track of what has actually been inserted.
   std::unordered_set<uint64_t> s;
-  BloomRF<uint64_t> bf{BloomFilterRFParameters{16000, 6, 0, 3}};
+
+  BloomRF<uint64_t> bf{BloomFilterRFParameters{16000, 6, 0}};
 };
 
 TEST_F(BloomFilterUniformTest, NoFalseNegatives) {
@@ -51,17 +53,4 @@ void printBinary(T t) {
   }
   std::reverse(print.begin(), print.end());
   std::copy(print.begin(), print.end(), std::ostream_iterator<int>(std::cerr));
-}
-
-TEST(decomposeDyadicIntervals, Basic) {
-  auto x = filters::decomposeIntoDyadicIntervals<uint64_t>(45, 60);
-  for (int i = 0; i < x.size(); ++i) {
-    std::cerr << i << ": " << std::endl;
-
-    for (auto prefix : x[i]) {
-      printBinary(prefix);
-      std::cerr << ", ";
-    }
-    std::cerr << std::endl;
-  }
 }
