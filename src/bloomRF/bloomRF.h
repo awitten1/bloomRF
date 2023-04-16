@@ -80,7 +80,7 @@ class BloomRF {
       checks.insert(checks.end(), other.checks.begin(), other.checks.end());
     }
 
-  private:
+   private:
     std::vector<Check> checks;
     size_t domain_width = 8 * sizeof(T);
     T lkey;
@@ -89,11 +89,11 @@ class BloomRF {
     friend class BloomRF;
   };
 
-  UnderType buildBitMaskForRange(T low, T high) {
+  UnderType buildBitMaskForRange(T low, T high, size_t i) {
     UnderType ret = 0;
     UnderType bitmask = (1 << delta) - 1;
     for (T idx = low; idx <= high; ++idx) {
-      ret |= (idx & bitmask);
+      ret |= bloomRFRemainder(idx, i);
     }
     return ret;
   }
@@ -104,19 +104,13 @@ class BloomRF {
   size_t numBits() { return 8 * sizeof(UnderType) * filter.size(); }
 
   /// Computes the ith PMHF hash of data in terms of ith generic hash.
-  size_t bloomRFHash(T data, size_t i);
+  /// Only returns the word that the data item maps to.
+  /// Does not return offset.
+  size_t bloomRFHashToWord(T data, size_t i);
+
+  UnderType bloomRFRemainder(T data, size_t i);
 
   size_t hash(T data, size_t i);
-
-  bool checkBit(size_t pos) {
-    T one = 1;
-    return (filter[pos >> (Delta - 1)] &
-          (one << (pos % (8 * sizeof(UnderType)))));
-  }
-
-  UnderType getWord(size_t pos) {
-    return filter[pos >> (Delta - 1)];
-  }
 
   /// Number of hash functions.
   size_t hashes;

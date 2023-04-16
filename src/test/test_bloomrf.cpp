@@ -1,8 +1,8 @@
 #include <_types/_uint16_t.h>
 #include <_types/_uint64_t.h>
-#include <cstdlib>
 #include <gtest/gtest.h>
 #include <algorithm>
+#include <cstdlib>
 
 #include <iomanip>
 #include <limits>
@@ -40,31 +40,29 @@ class BloomFilterUniformTest : public ::testing::Test {
 
 TEST_F(BloomFilterUniformTest, NoFalseNegativesPointQuery) {
   for (auto it = s.cbegin(); it != s.cend(); ++it) {
-    ASSERT_TRUE(bf.find(*it));
+    EXPECT_TRUE(bf.find(*it));
   }
 }
 
-template <typename T>
-void printBinary(T t) {
-  std::cerr << t << ": ";
-  std::vector<int> print;
-  while (t > 0) {
-    print.push_back(t % 2);
-    t >>= 1;
-  }
-  std::reverse(print.begin(), print.end());
-  std::copy(print.begin(), print.end(), std::ostream_iterator<int>(std::cerr));
-}
+TEST(Basic, OneOffRangeQuery) {
+  BloomRF<uint64_t> bf{BloomFilterRFParameters{16000, 6, 0}};
+  uint64_t key = 17183560791176864955ULL;
+  bf.add(key);
+  EXPECT_TRUE(bf.findRange(key, key + 2));
 
+  key = 6734315744289451875ULL;
+  bf.add(key);
+  EXPECT_TRUE(bf.findRange(key, key + 1));
+
+  key = 16343179362131379382ULL;
+  bf.add(key);
+  EXPECT_TRUE(bf.findRange(key, key));
+}
 
 TEST_F(BloomFilterUniformTest, NoFalseNegativesRangeQuery) {
   for (auto it = s.cbegin(); it != s.cend(); ++it) {
-    printBinary(*it);
     auto low = *it - rand() % 10;
     auto high = *it + rand() % 10;
-    std::cerr << std::endl << low << ", " << high << std::endl;
     ASSERT_TRUE(bf.findRange(low, high));
-    break;
   }
 }
-
