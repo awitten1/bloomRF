@@ -22,18 +22,21 @@ struct BloomFilterRFParameters {
   size_t seed;
 };
 
-
 template <typename T, typename UnderType = uint64_t, size_t Delta = 7>
 class BloomRF {
   // A current limitation of the implementation. This should eventually
-  // support other UnderTypes (in particular uint128_t).  The implementation requires that a
-  // "bloomRF word" of width 2^(delta - 1) be the same size as the UnderType.
-  static_assert(std::is_same_v<UnderType, uint64_t> || std::is_same_v<UnderType, uint32_t>,
+  // support other UnderTypes (in particular uint128_t).  The implementation
+  // requires that a "bloomRF word" of width 2^(delta - 1) be the same size as
+  // the UnderType.
+  static_assert(
+      std::is_same_v<UnderType, uint64_t> ||
+          std::is_same_v<UnderType, uint32_t>,
       "UnderTypes other than uint64_t or uint32_t are not yet supported.");
 
-  // This check follows from the above requriement; that a bloomRF word be the same size as an UnderType.
-  static_assert(8 * sizeof(UnderType) == 1 << (Delta - 1), "Delta is inconsistent with the size of UnderType.");
-
+  // This check follows from the above requriement; that a bloomRF word be the
+  // same size as an UnderType.
+  static_assert(8 * sizeof(UnderType) == 1 << (Delta - 1),
+                "Delta is inconsistent with the size of UnderType.");
 
  public:
   using Container = std::vector<UnderType>;
@@ -50,14 +53,24 @@ class BloomRF {
   Container& getFilter() { return filter; }
 
  private:
-
   class Checks {
-  public:
-    Checks(T lkey_, T hkey_) : lkey(lkey_), hkey(hkey_) {}
+   public:
+    enum class IntervalLocation { Left, Right, NotYetSplit };
 
-    const auto& getChecks() {
-      return checks;
-    }
+    struct Check {
+      Check(T low_, T high_, bool is_covering_, IntervalLocation loc_)
+          : low{low_}, high{high_}, is_covering{is_covering_}, loc{loc_} {}
+
+      T low;
+      T high;
+      bool is_covering;
+      IntervalLocation loc;
+    };
+
+    Checks(T lkey_, T hkey_, std::vector<Check>&& checks_)
+        : checks{std::move(checks_)}, lkey(lkey_), hkey(hkey_) {}
+
+    const auto& getChecks() { return checks; }
 
     void initChecks(size_t num_hashes, uint16_t delta);
 
@@ -68,18 +81,12 @@ class BloomRF {
     }
 
   private:
-    struct Check {
-      Check(T low_, T high_, bool is_covering_, bool on_left_) :
-        low{low_}, high{high_}, is_covering{is_covering_}, on_left{on_left_} {}
-      T low;
-      T high;
-      bool is_covering;
-      bool on_left; // is this check on the left?
-    };
     std::vector<Check> checks;
     size_t domain_width = 8 * sizeof(T);
     T lkey;
     T hkey;
+
+    friend class BloomRF;
   };
 
   UnderType buildBitMaskForRange(T low, T high) {
@@ -102,21 +109,20 @@ class BloomRF {
   size_t hash(T data, size_t i);
 
   bool checkBit(size_t pos) {
-    return (filter[pos / (8 * sizeof(UnderType))] &
-          (1ULL << (pos % (8 * sizeof(UnderType)))));
+    T one = 1;
+    return (filter[pos >> (Delta - 1)] &
+          (one << (pos % (8 * sizeof(UnderType)))));
   }
 
   UnderType getWord(size_t pos) {
-    return filter[pos / (8 * sizeof(UnderType))];
+    return filter[pos >> (Delta - 1)];
   }
-
 
   /// Number of hash functions.
   size_t hashes;
 
   /// Seed of hash functions.
   size_t seed;
-
 
   size_t words;
 
