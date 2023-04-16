@@ -23,18 +23,6 @@ constexpr uint64_t MAX_BLOOM_FILTER_SIZE = 1 << 30;
 
 }  // namespace
 
-template <typename T>
-void printBinary(T t) {
-  std::cerr << t << ": ";
-  std::vector<int> print;
-  while (t > 0) {
-    print.push_back(t % 2);
-    t >>= 1;
-  }
-  std::reverse(print.begin(), print.end());
-  std::copy(print.begin(), print.end(), std::ostream_iterator<int>(std::cerr));
-}
-
 BloomFilterRFParameters::BloomFilterRFParameters(size_t filter_size_,
                                                  size_t filter_hashes_,
                                                  size_t seed_)
@@ -52,10 +40,15 @@ BloomRF<T, UnderType, Delta>::BloomRF(const BloomFilterRFParameters& params)
                             params.seed) {}
 
 template <typename T, typename UnderType, size_t Delta>
-size_t BloomRF<T, UnderType, Delta>::bloomRFHash(T data, size_t i) {
+size_t BloomRF<T, UnderType, Delta>::bloomRFHashToWord(T data, size_t i) {
   auto hash = this->hash(data >> ((i * delta) + delta - 1), i);
-  return ((hash % (numBits() >> (delta - 1))) << (delta - 1)) +
-         ((data >> (i * delta)) & (1 << (delta - 1)) - 1);
+  return hash % (numBits() >> (Delta - 1));
+}
+
+template <typename T, typename UnderType, size_t Delta>
+UnderType BloomRF<T, UnderType, Delta>::bloomRFRemainder(T data, size_t i) {
+  T offset = (data >> (i * Delta)) & ((1 << Delta) - 1);
+  return 1 << offset;
 }
 
 template <typename T, typename UnderType, size_t Delta>
@@ -70,19 +63,17 @@ size_t BloomRF<T, UnderType, Delta>::hash(T data, size_t i) {
 
 template <typename T, typename UnderType, size_t Delta>
 void BloomRF<T, UnderType, Delta>::add(T data) {
-  T one = 1;
   for (size_t i = 0; i < hashes; ++i) {
-    size_t pos = bloomRFHash(data, i);
-    filter[pos >> (Delta - 1)] |=
-        (one << (pos % (8 * sizeof(UnderType))));
+    size_t pos = bloomRFHashToWord(data, i);
+    filter[pos] |= bloomRFRemainder(data, i);
   }
 }
 
 template <typename T, typename UnderType, size_t Delta>
 bool BloomRF<T, UnderType, Delta>::find(T data) {
   for (size_t i = 0; i < hashes; ++i) {
-    size_t pos = bloomRFHash(data, i);
-    if (!checkBit(pos)) {
+    size_t pos = bloomRFHashToWord(data, i);
+    if (!(filter[pos] & bloomRFRemainder(data, i))) {
       return false;
     }
   }
@@ -94,29 +85,24 @@ bool BloomRF<T, UnderType, Delta>::findRange(T low, T high) {
   Checks checks(low, high, {});
 
   checks.initChecks(hashes, delta);
-  std::cerr << "Checks initialized." << std::endl;
 
   for (int layer = hashes - 1; layer >= 0; --layer) {
     Checks new_checks(low, high, {});
     for (const auto& check : checks.getChecks()) {
-      std::cerr << "layer: " << layer << ", " << check.low << ", " << check.high
-                << std::endl;
-      printBinary(check.low);
-      std::cerr << std::endl;
+
       if (check.is_covering) {
-        std::cerr << "is covering" << std::endl;
-        size_t pos = bloomRFHash(check.low, layer);
-        if (checkBit(pos)) {
-          std::cerr << "bit set" << std::endl;
-          Checks check_for_interval{low, high,
-             {typename Checks::Check{check.low, check.high, true, check.loc}}};
+        size_t pos = bloomRFHashToWord(check.low, layer);
+        if (filter[pos] & bloomRFRemainder(check.low, layer)) {
+          Checks check_for_interval{
+              low,
+              high,
+              {typename Checks::Check{check.low, check.high, true, check.loc}}};
           check_for_interval.advanceChecks(delta);
           new_checks.concatenateChecks(check_for_interval);
         }
       } else {
-        std::cout << "not covering" << std::endl;
-        UnderType bitmask = buildBitMaskForRange(check.low, check.high);
-        UnderType word = getWord(bloomRFHash(check.low, layer));
+        UnderType bitmask = buildBitMaskForRange(check.low, check.high, layer);
+        UnderType word = filter[bloomRFHashToWord(check.low, layer)];
         if ((bitmask & word) != 0) {
           return true;
         }
@@ -140,15 +126,18 @@ void BloomRF<T, UnderType, Delta>::Checks::advanceChecks(size_t times) {
         T mid = high - ((high - low) >> 1);
         if (check.loc == IntervalLocation::NotYetSplit) {
           if (mid <= lkey) {
+            bool covering = mid < lkey || high > hkey;
             new_checks.push_back(
-                {mid, high, true, IntervalLocation::NotYetSplit});
-          } else if (mid >= hkey) {
+                {mid, high, covering, IntervalLocation::NotYetSplit});
+          } else if (mid - 1 >= hkey) {
+            bool covering = low < lkey || mid - 1 > hkey;
             new_checks.push_back(
-                {low, mid, true, IntervalLocation::NotYetSplit});
+                {low, static_cast<T>(mid - 1), covering, IntervalLocation::NotYetSplit});
           } else {
+            new_checks.push_back({low, static_cast<T>(mid - 1), lkey < low,
+                                  IntervalLocation::Left});
             new_checks.push_back(
-                {low, static_cast<T>(mid - 1), true, IntervalLocation::Left});
-            new_checks.push_back({mid, high, true, IntervalLocation::Right});
+                {mid, high, hkey > high, IntervalLocation::Right});
           }
         } else if (check.loc == IntervalLocation::Left) {
           bool is_left_covering = mid > lkey;
@@ -185,7 +174,8 @@ void BloomRF<T, UnderType, Delta>::Checks::initChecks(size_t num_hashes,
   T high = ~low;
 
   if (checks.size() > 0) {
-    throw std::logic_error{"Cannot init checks on a non-empty checks instance."};
+    throw std::logic_error{
+        "Cannot init checks on a non-empty checks instance."};
   }
 
   checks.push_back({low, high, true, IntervalLocation::NotYetSplit});
