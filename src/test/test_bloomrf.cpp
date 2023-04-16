@@ -1,5 +1,6 @@
 #include <_types/_uint16_t.h>
 #include <_types/_uint64_t.h>
+#include <cstdlib>
 #include <gtest/gtest.h>
 #include <algorithm>
 
@@ -37,7 +38,7 @@ class BloomFilterUniformTest : public ::testing::Test {
   BloomRF<uint64_t> bf{BloomFilterRFParameters{16000, 6, 0}};
 };
 
-TEST_F(BloomFilterUniformTest, NoFalseNegatives) {
+TEST_F(BloomFilterUniformTest, NoFalseNegativesPointQuery) {
   for (auto it = s.cbegin(); it != s.cend(); ++it) {
     ASSERT_TRUE(bf.find(*it));
   }
@@ -54,3 +55,16 @@ void printBinary(T t) {
   std::reverse(print.begin(), print.end());
   std::copy(print.begin(), print.end(), std::ostream_iterator<int>(std::cerr));
 }
+
+
+TEST_F(BloomFilterUniformTest, NoFalseNegativesRangeQuery) {
+  for (auto it = s.cbegin(); it != s.cend(); ++it) {
+    printBinary(*it);
+    auto low = *it - rand() % 10;
+    auto high = *it + rand() % 10;
+    std::cerr << std::endl << low << ", " << high << std::endl;
+    ASSERT_TRUE(bf.findRange(low, high));
+    break;
+  }
+}
+
