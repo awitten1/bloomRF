@@ -39,7 +39,7 @@ void runRangeExperimentsForUniform() {
   double fp =
       ed64U.randomRangeQuerys(30000,
                               [=, uniform = std::uniform_int_distribution<T>{
-                                      std::numeric_limits<T>::max() + 1,
+                                      (std::numeric_limits<T>::max() >> 1) + 1,
                                       std::numeric_limits<T>::max() -
                                           10000}]() mutable -> std::pair<T, T> {
                                 auto start = uniform(mt);
