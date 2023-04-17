@@ -2,6 +2,7 @@
 #include <_types/_uint64_t.h>
 #include <cstddef>
 #include <iostream>
+#include <limits>
 #include <type_traits>
 #include <vector>
 
@@ -22,16 +23,20 @@ struct BloomFilterRFParameters {
   size_t seed;
 };
 
+#ifdef __SIZEOF_INT128__
+namespace {
+using uint128_t = __uint128_t;
+}
+#endif
+
 template <typename T, typename UnderType = uint64_t, size_t Delta = 7>
 class BloomRF {
   // A current limitation of the implementation. This should eventually
   // support other UnderTypes (in particular uint128_t).  The implementation
   // requires that a "bloomRF word" of width 2^(delta - 1) be the same size as
   // the UnderType.
-  static_assert(
-      std::is_same_v<UnderType, uint64_t> ||
-          std::is_same_v<UnderType, uint32_t>,
-      "UnderTypes other than uint64_t or uint32_t are not yet supported.");
+  static_assert(std::is_integral_v<UnderType> && std::is_unsigned_v<UnderType>,
+                "Must be integral and unsigned.");
 
   // This check follows from the above requriement; that a bloomRF word be the
   // same size as an UnderType.
@@ -90,12 +95,14 @@ class BloomRF {
   };
 
   UnderType buildBitMaskForRange(T low, T high, size_t i) {
-    UnderType ret = 0;
-    UnderType bitmask = (1 << delta) - 1;
-    for (T idx = low; idx <= high; ++idx) {
-      ret |= bloomRFRemainder(idx, i);
-    }
-    return ret;
+    UnderType lowOffset = 1 << ((low >> (i * Delta)) & remainderMask);
+    UnderType highOffset = 1 << ((high >> (i * Delta)) & remainderMask);
+
+    UnderType ret = ~0;
+    ret &= ~((1 << lowOffset) - 1);
+    ret &= ((1 << (highOffset + 1)) - 1);
+
+    return ~ret;
   }
 
   explicit BloomRF(size_t size_, size_t hashes_, size_t seed_);
@@ -125,6 +132,8 @@ class BloomRF {
 
   /// Size of the domain in bits.
   uint16_t domain_size = 8 * sizeof(T);
+
+  inline static constexpr UnderType remainderMask = (1 << Delta) - 1;
 
   Container filter;
 };
