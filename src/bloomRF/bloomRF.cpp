@@ -1,5 +1,7 @@
 #include "bloomRF.h"
+#include "city/city.h"
 #include <_types/_uint16_t.h>
+#include <_types/_uint32_t.h>
 #include <_types/_uint64_t.h>
 #include <_types/_uint8_t.h>
 #include <cassert>
@@ -35,7 +37,7 @@ BloomFilterRFParameters::BloomFilterRFParameters(size_t filter_size_,
 
 template <typename T, typename UnderType, size_t Delta>
 BloomRF<T, UnderType, Delta>::BloomRF(const BloomFilterRFParameters& params)
-    : BloomRF<T, UnderType>(params.filter_size,
+    : BloomRF<T, UnderType, Delta>(params.filter_size,
                             params.filter_hashes,
                             params.seed) {}
 
@@ -47,7 +49,7 @@ size_t BloomRF<T, UnderType, Delta>::bloomRFHashToWord(T data, size_t i) {
 
 template <typename T, typename UnderType, size_t Delta>
 UnderType BloomRF<T, UnderType, Delta>::bloomRFRemainder(T data, size_t i) {
-  T offset = (data >> (i * Delta)) & ((1 << Delta) - 1);
+  T offset = (data >> (i * Delta)) & remainderMask;
   return 1 << offset;
 }
 
@@ -89,7 +91,6 @@ bool BloomRF<T, UnderType, Delta>::findRange(T low, T high) {
   for (int layer = hashes - 1; layer >= 0; --layer) {
     Checks new_checks(low, high, {});
     for (const auto& check : checks.getChecks()) {
-
       if (check.is_covering) {
         size_t pos = bloomRFHashToWord(check.low, layer);
         if (filter[pos] & bloomRFRemainder(check.low, layer)) {
@@ -131,8 +132,8 @@ void BloomRF<T, UnderType, Delta>::Checks::advanceChecks(size_t times) {
                 {mid, high, covering, IntervalLocation::NotYetSplit});
           } else if (mid - 1 >= hkey) {
             bool covering = low < lkey || mid - 1 > hkey;
-            new_checks.push_back(
-                {low, static_cast<T>(mid - 1), covering, IntervalLocation::NotYetSplit});
+            new_checks.push_back({low, static_cast<T>(mid - 1), covering,
+                                  IntervalLocation::NotYetSplit});
           } else {
             new_checks.push_back({low, static_cast<T>(mid - 1), lkey < low,
                                   IntervalLocation::Left});
@@ -166,10 +167,6 @@ void BloomRF<T, UnderType, Delta>::Checks::advanceChecks(size_t times) {
 template <typename T, typename UnderType, size_t Delta>
 void BloomRF<T, UnderType, Delta>::Checks::initChecks(size_t num_hashes,
                                                       uint16_t delta) {
-  static_assert(std::is_integral_v<T> && std::is_unsigned_v<T>,
-                "Must be integral and unsigned. Must provide alternate "
-                "implementation for other types.");
-
   T low = 0;
   T high = ~low;
 
@@ -195,5 +192,13 @@ BloomRF<T, UnderType, Delta>::BloomRF(size_t size_,
 template class BloomRF<uint16_t>;
 template class BloomRF<uint32_t>;
 template class BloomRF<uint64_t>;
+template class BloomRF<uint64_t, uint32_t, 6>;
+
+
+
+#ifdef __SIZEOF_INT128__
+template class BloomRF<uint64_t, uint128_t, 8>;
+#endif
+
 
 }  // namespace filters

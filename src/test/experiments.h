@@ -1,5 +1,6 @@
 
 
+#include <cstddef>
 #include <random>
 #include <string>
 #include <tuple>
@@ -11,7 +12,7 @@
 using filters::BloomFilterRFParameters;
 using filters::BloomRF;
 
-template <typename T, typename RandomNumberGenerator>
+template <typename T, typename RandomNumberGenerator, typename UnderType, size_t Delta>
 class ExperimentDriver {
  public:
   ExperimentDriver(const BloomFilterRFParameters& params,
@@ -54,7 +55,7 @@ class ExperimentDriver {
   }
 
  private:
-  BloomRF<T> bf;
+  BloomRF<T, UnderType, Delta> bf;
   std::unordered_set<T> s;
   RandomNumberGenerator dist;
 };
