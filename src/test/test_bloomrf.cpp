@@ -1,9 +1,9 @@
 #include <_types/_uint16_t.h>
 #include <_types/_uint32_t.h>
 #include <_types/_uint64_t.h>
-#include <cstddef>
 #include <gtest/gtest.h>
 #include <algorithm>
+#include <cstddef>
 #include <cstdlib>
 
 #include <iomanip>
@@ -53,7 +53,8 @@ class BloomFilterUniform128Test : public ::testing::Test {
   // Keep track of what has actually been inserted.
   std::unordered_set<uint64_t> s;
 
-  BloomRF<uint64_t, filters::uint128_t, 8> bf{BloomFilterRFParameters{16000, 6, 0}};
+  BloomRF<uint64_t, filters::uint128_t, 8> bf{
+      BloomFilterRFParameters{16000, 6, 0}};
 };
 
 class BloomFilterUniform32Test : public ::testing::Test {
@@ -70,9 +71,6 @@ class BloomFilterUniform32Test : public ::testing::Test {
 
   BloomRF<uint64_t, uint32_t, 6> bf{BloomFilterRFParameters{16000, 6, 0}};
 };
-
-
-
 
 TEST_F(BloomFilterUniform64Test, NoFalseNegativesPointQuery) {
   for (auto it = s.cbegin(); it != s.cend(); ++it) {
@@ -153,4 +151,3 @@ TEST_F(BloomFilterUniform32Test, NoFalseNegativesRangeQueryLargeRange) {
     ASSERT_TRUE(bf.findRange(low, high));
   }
 }
-

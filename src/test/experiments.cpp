@@ -7,7 +7,7 @@
 #include <iomanip>
 #include <random>
 
-template<typename T, typename UnderType, size_t Delta>
+template <typename T, typename UnderType, size_t Delta>
 void runExperimentsForUniform() {
   std::random_device rd;
   std::mt19937 mt{rd()};
@@ -22,8 +22,7 @@ void runExperimentsForUniform() {
   std::cout << fp << std::endl;
 }
 
-
-template<typename T, typename UnderType, size_t Delta>
+template <typename T, typename UnderType, size_t Delta>
 void runExperimentsForNormal() {
   std::random_device rd;
   std::mt19937 mt{rd()};
@@ -42,7 +41,6 @@ void runExperimentsForNormal() {
 
   std::cout << fp << std::endl;
 }
-
 
 int main() {
   runExperimentsForUniform<uint64_t, uint32_t, 6>();
