@@ -1,6 +1,7 @@
 
 
 #include <cstddef>
+#include <functional>
 #include <random>
 #include <string>
 #include <tuple>
@@ -54,6 +55,24 @@ class ExperimentDriver {
     }
     auto fp = static_cast<double>(false_positives) /
               static_cast<double>(denominator - true_positive);
+    return fp;
+  }
+
+  /// Assumes genQuery always returns a range that doesn't contain a key.
+  double randomRangeQuerys(int denominator,
+                           std::function<std::pair<T, T>()> genQuery) {
+    int false_positives = 0;
+    int true_positive = 0;
+
+    for (int i = 0; i < denominator; ++i) {
+      auto q = genQuery();
+      bool in = bf.findRange(q.first, q.second);
+      if (in) {
+        ++false_positives;
+      }
+    }
+    auto fp =
+        static_cast<double>(false_positives) / static_cast<double>(denominator);
     return fp;
   }
 
