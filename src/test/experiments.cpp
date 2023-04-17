@@ -1,23 +1,50 @@
 
 #include "experiments.h"
+#include "city/city.h"
 
 #include <_types/_uint32_t.h>
 #include <_types/_uint64_t.h>
 #include <cstddef>
 #include <iomanip>
+#include <limits>
 #include <random>
 
 template <typename T, typename UnderType, size_t Delta>
 void runExperimentsForUniform() {
   std::random_device rd;
   std::mt19937 mt{rd()};
-  auto genUniform = [=, uniform = std::uniform_int_distribution<>{
+  auto genUniform = [=, uniform = std::uniform_int_distribution<T>{
                             0}]() mutable { return uniform(mt); };
   ExperimentDriver<T, decltype(genUniform), UnderType, Delta> ed64U{
       BloomFilterRFParameters{3200000, 6, 0}, genUniform};
 
   ed64U.doInserts(2000000);
   double fp = ed64U.randomQuerys(30000);
+
+  std::cout << fp << std::endl;
+}
+
+template <typename T, typename UnderType, size_t Delta>
+void runRangeExperimentsForUniform() {
+  std::random_device rd;
+  std::mt19937 mt{rd()};
+  auto genUniform = [=, uniform = std::uniform_int_distribution<T>{
+                            0, std::numeric_limits<T>::max() >> 1}]() mutable {
+    return uniform(mt);
+  };
+  ExperimentDriver<T, decltype(genUniform), UnderType, Delta> ed64U{
+      BloomFilterRFParameters{3200000, 6, 0}, genUniform};
+
+  ed64U.doInserts(2000000);
+  double fp =
+      ed64U.randomRangeQuerys(30000,
+                              [=, uniform = std::uniform_int_distribution<T>{
+                                      std::numeric_limits<T>::max() + 1,
+                                      std::numeric_limits<T>::max() -
+                                          10000}]() mutable -> std::pair<T, T> {
+                                auto start = uniform(mt);
+                                return {start, start + 5000};
+                              });
 
   std::cout << fp << std::endl;
 }
@@ -49,4 +76,8 @@ int main() {
   runExperimentsForNormal<uint64_t, uint64_t, 7>();
   runExperimentsForUniform<uint64_t, filters::uint128_t, 8>();
   runExperimentsForNormal<uint64_t, filters::uint128_t, 8>();
+  std::cout << "-----------RUNNING RANGE EXPERIMENTS-----------" << std::endl;
+  runRangeExperimentsForUniform<uint64_t, uint32_t, 6>();
+  runRangeExperimentsForUniform<uint64_t, uint64_t, 7>();
+  runRangeExperimentsForUniform<uint64_t, filters::uint128_t, 8>();
 }
