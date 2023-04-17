@@ -1,5 +1,4 @@
 #include "bloomRF.h"
-#include "city/city.h"
 #include <_types/_uint16_t.h>
 #include <_types/_uint32_t.h>
 #include <_types/_uint64_t.h>
@@ -13,6 +12,7 @@
 #include <type_traits>
 #include <utility>
 #include <vector>
+#include "city/city.h"
 
 namespace filters {
 
@@ -38,8 +38,8 @@ BloomFilterRFParameters::BloomFilterRFParameters(size_t filter_size_,
 template <typename T, typename UnderType, size_t Delta>
 BloomRF<T, UnderType, Delta>::BloomRF(const BloomFilterRFParameters& params)
     : BloomRF<T, UnderType, Delta>(params.filter_size,
-                            params.filter_hashes,
-                            params.seed) {}
+                                   params.filter_hashes,
+                                   params.seed) {}
 
 template <typename T, typename UnderType, size_t Delta>
 size_t BloomRF<T, UnderType, Delta>::bloomRFHashToWord(T data, size_t i) {
@@ -194,11 +194,8 @@ template class BloomRF<uint32_t>;
 template class BloomRF<uint64_t>;
 template class BloomRF<uint64_t, uint32_t, 6>;
 
-
-
 #ifdef __SIZEOF_INT128__
 template class BloomRF<uint64_t, uint128_t, 8>;
 #endif
-
 
 }  // namespace filters
