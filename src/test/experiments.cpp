@@ -74,10 +74,10 @@ int main() {
   runExperimentsForNormal<uint64_t, uint32_t>();
   runExperimentsForUniform<uint64_t, uint64_t>();
   runExperimentsForNormal<uint64_t, uint64_t>();
-  runExperimentsForUniform<uint64_t, filters::uint128_t>();
-  runExperimentsForNormal<uint64_t, filters::uint128_t>();
+  //runExperimentsForUniform<uint64_t, filters::uint128_t>();
+  //runExperimentsForNormal<uint64_t, filters::uint128_t>();
   std::cout << "-----------RUNNING RANGE EXPERIMENTS-----------" << std::endl;
   runRangeExperimentsForUniform<uint64_t, uint32_t>();
   runRangeExperimentsForUniform<uint64_t, uint64_t>();
-  runRangeExperimentsForUniform<uint64_t, filters::uint128_t>();
+  //runRangeExperimentsForUniform<uint64_t, filters::uint128_t>();
 }

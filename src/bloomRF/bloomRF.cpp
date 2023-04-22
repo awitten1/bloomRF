@@ -8,6 +8,7 @@
 #include <exception>
 #include <iostream>
 #include <limits>
+#include <sstream>
 #include <stdexcept>
 #include <type_traits>
 #include <utility>
@@ -47,8 +48,10 @@ size_t BloomRF<T, UnderType>::bloomRFHashToWord(T data, size_t i) {
 
 template <typename T, typename UnderType>
 UnderType BloomRF<T, UnderType>::bloomRFRemainder(T data, size_t i, int wordPos) {
-  T offset = (data >> shifts[i]) & ((1 << (delta[i] - 1)) - 1);
-  return (1 << offset) << (wordPos * (delta[i] - 1));
+  UnderType offset = (data >> shifts[i]) & ((1 << (delta[i] - 1)) - 1);
+  UnderType ret = (1 << offset);
+  ret = ret << (wordPos * (1 << (delta[i] - 1)));
+  return ret;
 }
 
 
@@ -62,12 +65,14 @@ size_t BloomRF<T, UnderType>::hash(T data, size_t i) {
   return hash1 + i * hash2 + i * i;
 }
 
+
+
 template <typename T, typename UnderType>
 void BloomRF<T, UnderType>::add(T data) {
   for (size_t i = 0; i < hashes; ++i) {
     size_t pos = bloomRFHashToWord(data, i);
-    std::div_t div = std::div(8 * sizeof(UnderType), (1 << (delta[i] - 1)));
-    filter[pos / div.quot] |= bloomRFRemainder(data, i, div.rem);
+    auto div = getFilterPosAndOffset(pos, i);
+    filter[div.quot] |= bloomRFRemainder(data, i, div.rem);
   }
 }
 
@@ -75,12 +80,18 @@ template <typename T, typename UnderType>
 bool BloomRF<T, UnderType>::find(T data) {
   for (size_t i = 0; i < hashes; ++i) {
     size_t pos = bloomRFHashToWord(data, i);
-    std::div_t div = std::div(8 * sizeof(UnderType), (1 << (delta[i] - 1)));
-    if (!(filter[pos / div.quot] & bloomRFRemainder(data, i, div.rem))) {
+    auto div = getFilterPosAndOffset(pos, i);
+    if (!(filter[div.quot] & bloomRFRemainder(data, i, div.rem))) {
       return false;
     }
   }
   return true;
+}
+
+template<typename T, typename UnderType>
+std::ldiv_t BloomRF<T, UnderType>::getFilterPosAndOffset(size_t pos, size_t i) {
+  size_t wordsPerUnderType = 8 * sizeof(UnderType) / (1 << (delta[i] - 1));
+  return std::ldiv(pos, wordsPerUnderType);
 }
 
 template <typename T, typename UnderType>
@@ -94,20 +105,20 @@ bool BloomRF<T, UnderType>::findRange(T low, T high) {
     for (const auto& check : checks.getChecks()) {
       if (check.is_covering) {
         size_t pos = bloomRFHashToWord(check.low, layer);
-        std::div_t div = std::div(8 * sizeof(UnderType), (1 << (delta[layer] - 1)));
-        if (filter[pos / div.quot] & bloomRFRemainder(check.low, layer, div.rem)) {
+        auto div = getFilterPosAndOffset(pos, layer);
+        if (filter[div.quot] & bloomRFRemainder(check.low, layer, div.rem)) {
           Checks check_for_interval{
               low,
               high,
               {typename Checks::Check{check.low, check.high, true, check.loc}}};
-          check_for_interval.advanceChecks(delta[layer]);
+          check_for_interval.advanceChecks(delta[layer - 1]);
           new_checks.concatenateChecks(check_for_interval);
         }
       } else {
         size_t pos = bloomRFHashToWord(check.low, layer);
-        std::div_t div = std::div(8 * sizeof(UnderType), (1 << (delta[layer] - 1)));
+        auto div = getFilterPosAndOffset(pos, layer);
         UnderType bitmask = buildBitMaskForRange(check.low, check.high, layer, div.rem);
-        UnderType word = filter[pos / div.quot];
+        UnderType word = filter[div.quot];
         if ((bitmask & word) != 0) {
           return true;
         }
@@ -182,6 +193,19 @@ void BloomRF<T, UnderType>::Checks::initChecks(size_t delta_sum) {
   advanceChecks(domain_width - delta_sum);
 }
 
+template<typename T, typename UnderType>
+UnderType BloomRF<T, UnderType>::buildBitMaskForRange(T low, T high, size_t i, int wordPos) {
+    UnderType lowOffset = ((low >> shifts[i]) & ((1 << (delta[i] - 1)) - 1));
+    UnderType highOffset = ((high >> shifts[i]) & ((1 << (delta[i] - 1)) - 1));
+    UnderType ret = ~0;
+    ret ^= (1 << lowOffset) - 1;
+    if (highOffset < 8 * sizeof(UnderType) - 1) {
+      ret &= (1 << (highOffset + 1)) - 1;
+    }
+    ret = ret << (wordPos * (1 << (delta[i] - 1)));
+    return ret;
+}
+
 template <typename T, typename UnderType>
 BloomRF<T, UnderType>::BloomRF(size_t size_,
                                       size_t seed_,
@@ -192,9 +216,13 @@ BloomRF<T, UnderType>::BloomRF(size_t size_,
       filter(words, 0), delta(delta_), shifts(delta.size()) {
 
   for (auto d : delta) {
-    if ((d - 1) > 8 * sizeof(UnderType)) {
-      throw std::logic_error{"The width of a PMHF word cannot exceed the width of the UnderType; \
-        For all layer widths d, (d - 1) cannot exceed 8 * sizeof(UnderType)."};
+    if (8 * sizeof(UnderType) % (1 << (d - 1))) {
+      std::ostringstream os;
+      os << "The width of a PMHF word, must divide the width of the UnderType; ";
+      os << "this does not hold for distance layer: " << d << " and UnderType width: "
+         << 8 * sizeof(UnderType)
+         << std::endl;
+      throw std::logic_error{os.str()};
     }
   }
 
