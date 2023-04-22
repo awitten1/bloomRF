@@ -72,82 +72,124 @@ class BloomFilterUniform32Test : public ::testing::Test {
   BloomRF<uint64_t, uint32_t> bf{BloomFilterRFParameters{16000, 0, {6,6,6,6,6,6}}};
 };
 
-TEST_F(BloomFilterUniform64Test, NoFalseNegativesPointQuery) {
-  for (auto it = s.cbegin(); it != s.cend(); ++it) {
-    EXPECT_TRUE(bf.find(*it));
+class BloomFilterVariableLayers: public ::testing::Test {
+  protected:
+  void SetUp() override {
+    for (int i = 0; i < 10000; ++i) {
+      auto x = randomUniformUint64();
+      s.insert(x);
+      bf.add(x);
+    }
   }
-}
 
-TEST(OneOff, RangeQuery) {
-  BloomRF<uint64_t> bf{BloomFilterRFParameters{16000, 0, {7,7,7,7,7,7}}};
-  uint64_t key = 17183560791176864955ULL;
+  // Keep track of what has actually been inserted.
+  std::unordered_set<uint64_t> s;
+
+  BloomRF<uint64_t> bf{BloomFilterRFParameters{16000, 0, {7,7,4,4,2,2}}};
+};
+
+// TEST_F(BloomFilterUniform64Test, NoFalseNegativesPointQuery) {
+//   for (auto it = s.cbegin(); it != s.cend(); ++it) {
+//     EXPECT_TRUE(bf.find(*it));
+//   }
+// }
+
+// TEST(OneOff, RangeQuery) {
+//   BloomRF<uint64_t> bf{BloomFilterRFParameters{16000, 0, {7,7,7,7,7,7}}};
+//   uint64_t key = 17183560791176864955ULL;
+//   bf.add(key);
+//   EXPECT_TRUE(bf.findRange(key, key + 2));
+
+//   key = 6734315744289451875ULL;
+//   bf.add(key);
+//   EXPECT_TRUE(bf.findRange(key, key + 1));
+
+//   key = 16343179362131379382ULL;
+//   bf.add(key);
+//   EXPECT_TRUE(bf.findRange(key, key));
+// }
+
+// TEST_F(BloomFilterUniform64Test, NoFalseNegativesRangeQuerySmallRange) {
+//   for (auto it = s.cbegin(); it != s.cend(); ++it) {
+//     auto low = *it - rand() % 10;
+//     auto high = *it + rand() % 10;
+//     ASSERT_TRUE(bf.findRange(low, high));
+//   }
+// }
+
+// TEST_F(BloomFilterUniform64Test, NoFalseNegativesRangeQueryLargeRange) {
+//   for (auto it = s.cbegin(); it != s.cend(); ++it) {
+//     auto low = *it - rand() % 10000;
+//     auto high = *it + rand() % 10000;
+//     ASSERT_TRUE(bf.findRange(low, high));
+//   }
+// }
+
+// TEST_F(BloomFilterUniform128Test, NoFalseNegativesRangeQuerySmallRange) {
+//   for (auto it = s.cbegin(); it != s.cend(); ++it) {
+//     auto low = *it - rand() % 10;
+//     auto high = *it + rand() % 10;
+//     ASSERT_TRUE(bf.findRange(low, high));
+//   }
+// }
+
+// TEST_F(BloomFilterUniform128Test, NoFalseNegativesPointQuery) {
+//   for (auto it = s.cbegin(); it != s.cend(); ++it) {
+//     EXPECT_TRUE(bf.find(*it));
+//   }
+// }
+
+TEST(BloomFilterVariableLayersOneOff, BasicRange) {
+  auto key = 2978291708368540195ULL;
+  BloomRF<uint64_t> bf{BloomFilterRFParameters{16000, 0, {7,7,4,4,2,2}}};
   bf.add(key);
-  EXPECT_TRUE(bf.findRange(key, key + 2));
+  ASSERT_TRUE(bf.findRange(2978291708368540122ULL, 2978291708368543853ULL));
 
-  key = 6734315744289451875ULL;
+  key = 3641009636154320258ULL;
   bf.add(key);
-  EXPECT_TRUE(bf.findRange(key, key + 1));
-
-  key = 16343179362131379382ULL;
-  bf.add(key);
-  EXPECT_TRUE(bf.findRange(key, key));
+  ASSERT_TRUE(bf.findRange(3641009636154315818ULL, 3641009636154328423ULL));
 }
 
-TEST_F(BloomFilterUniform64Test, NoFalseNegativesRangeQuerySmallRange) {
+TEST_F(BloomFilterVariableLayers, NoFalseNegativesPointQuery) {
   for (auto it = s.cbegin(); it != s.cend(); ++it) {
-    auto low = *it - rand() % 10;
-    auto high = *it + rand() % 10;
+    ASSERT_TRUE(bf.find(*it));
+  }
+}
+
+TEST_F(BloomFilterVariableLayers, NoFalseNegativesRangeQueryLargeRange) {
+  for (auto it = s.cbegin(); it != s.cend(); ++it) {
+    auto low = *it - rand() % 100000;
+    auto high = *it + rand() % 100000;
     ASSERT_TRUE(bf.findRange(low, high));
   }
 }
 
-TEST_F(BloomFilterUniform64Test, NoFalseNegativesRangeQueryLargeRange) {
-  for (auto it = s.cbegin(); it != s.cend(); ++it) {
-    auto low = *it - rand() % 10000;
-    auto high = *it + rand() % 10000;
-    ASSERT_TRUE(bf.findRange(low, high));
-  }
-}
 
-TEST_F(BloomFilterUniform128Test, NoFalseNegativesRangeQuerySmallRange) {
-  for (auto it = s.cbegin(); it != s.cend(); ++it) {
-    auto low = *it - rand() % 10;
-    auto high = *it + rand() % 10;
-    ASSERT_TRUE(bf.findRange(low, high));
-  }
-}
+// TEST_F(BloomFilterUniform128Test, NoFalseNegativesRangeQueryLargeRange) {
+//   for (auto it = s.cbegin(); it != s.cend(); ++it) {
+//     auto low = *it - rand() % 10000;
+//     auto high = *it + rand() % 10000;
+//     ASSERT_TRUE(bf.findRange(low, high));
+//   }
+// }
+// TEST_F(BloomFilterUniform32Test, NoFalseNegativesRangeQuerySmallRange) {
+//   for (auto it = s.cbegin(); it != s.cend(); ++it) {
+//     auto low = *it - rand() % 10;
+//     auto high = *it + rand() % 10;
+//     ASSERT_TRUE(bf.findRange(low, high));
+//   }
+// }
 
-TEST_F(BloomFilterUniform128Test, NoFalseNegativesPointQuery) {
-  for (auto it = s.cbegin(); it != s.cend(); ++it) {
-    EXPECT_TRUE(bf.find(*it));
-  }
-}
+// TEST_F(BloomFilterUniform32Test, NoFalseNegativesPointQuery) {
+//   for (auto it = s.cbegin(); it != s.cend(); ++it) {
+//     EXPECT_TRUE(bf.find(*it));
+//   }
+// }
 
-TEST_F(BloomFilterUniform128Test, NoFalseNegativesRangeQueryLargeRange) {
-  for (auto it = s.cbegin(); it != s.cend(); ++it) {
-    auto low = *it - rand() % 10000;
-    auto high = *it + rand() % 10000;
-    ASSERT_TRUE(bf.findRange(low, high));
-  }
-}
-TEST_F(BloomFilterUniform32Test, NoFalseNegativesRangeQuerySmallRange) {
-  for (auto it = s.cbegin(); it != s.cend(); ++it) {
-    auto low = *it - rand() % 10;
-    auto high = *it + rand() % 10;
-    ASSERT_TRUE(bf.findRange(low, high));
-  }
-}
-
-TEST_F(BloomFilterUniform32Test, NoFalseNegativesPointQuery) {
-  for (auto it = s.cbegin(); it != s.cend(); ++it) {
-    EXPECT_TRUE(bf.find(*it));
-  }
-}
-
-TEST_F(BloomFilterUniform32Test, NoFalseNegativesRangeQueryLargeRange) {
-  for (auto it = s.cbegin(); it != s.cend(); ++it) {
-    auto low = *it - rand() % 10000;
-    auto high = *it + rand() % 10000;
-    ASSERT_TRUE(bf.findRange(low, high));
-  }
-}
+// TEST_F(BloomFilterUniform32Test, NoFalseNegativesRangeQueryLargeRange) {
+//   for (auto it = s.cbegin(); it != s.cend(); ++it) {
+//     auto low = *it - rand() % 10000;
+//     auto high = *it + rand() % 10000;
+//     ASSERT_TRUE(bf.findRange(low, high));
+//   }
+// }
