@@ -13,7 +13,8 @@ namespace filters {
 struct BloomFilterRFParameters {
   BloomFilterRFParameters(size_t filter_size_,
                           size_t filter_hashes_,
-                          size_t seed_);
+                          size_t seed_,
+                          uint8_t delta_);
 
   /// size of filter in bytes.
   size_t filter_size;
@@ -21,6 +22,8 @@ struct BloomFilterRFParameters {
   size_t filter_hashes;
   /// random seed for hash functions generation.
   size_t seed;
+  /// Distance between layers.
+  uint8_t delta;
 };
 
 #ifdef __SIZEOF_INT128__
@@ -29,19 +32,8 @@ using uint128_t = __uint128_t;
 }
 #endif
 
-template <typename T, typename UnderType = uint64_t, size_t Delta = 7>
+template <typename T, typename UnderType = uint64_t>
 class BloomRF {
-  // A current limitation of the implementation. This should eventually
-  // support other UnderTypes (in particular uint128_t).  The implementation
-  // requires that a "bloomRF word" of width 2^(delta - 1) be the same size as
-  // the UnderType.
-  static_assert(std::is_integral_v<UnderType> && std::is_unsigned_v<UnderType>,
-                "Must be integral and unsigned.");
-
-  // This check follows from the above requriement; that a bloomRF word be the
-  // same size as an UnderType.
-  static_assert(8 * sizeof(UnderType) == 1 << (Delta - 1),
-                "Delta is inconsistent with the size of UnderType.");
 
  public:
   using Container = std::vector<UnderType>;
@@ -95,8 +87,8 @@ class BloomRF {
   };
 
   UnderType buildBitMaskForRange(T low, T high, size_t i) {
-    UnderType lowOffset = 1 << ((low >> (i * Delta)) & remainderMask);
-    UnderType highOffset = 1 << ((high >> (i * Delta)) & remainderMask);
+    UnderType lowOffset = 1 << ((low >> (i * delta)) & ((1 << delta) - 1));
+    UnderType highOffset = 1 << ((high >> (i * delta)) & ((1 << delta) - 1));
 
     UnderType ret = ~0;
     ret &= ~((1 << lowOffset) - 1);
@@ -105,7 +97,7 @@ class BloomRF {
     return ~ret;
   }
 
-  explicit BloomRF(size_t size_, size_t hashes_, size_t seed_);
+  explicit BloomRF(size_t size_, size_t hashes_, size_t seed_, uint8_t delta);
 
   /// Returns size in bits.
   size_t numBits() { return 8 * sizeof(UnderType) * filter.size(); }
@@ -132,8 +124,6 @@ class BloomRF {
 
   /// Size of the domain in bits.
   uint16_t domain_size = 8 * sizeof(T);
-
-  inline static constexpr UnderType remainderMask = (1 << Delta) - 1;
 
   Container filter;
 };

@@ -27,34 +27,35 @@ constexpr uint64_t MAX_BLOOM_FILTER_SIZE = 1 << 30;
 
 BloomFilterRFParameters::BloomFilterRFParameters(size_t filter_size_,
                                                  size_t filter_hashes_,
-                                                 size_t seed_)
-    : filter_size(filter_size_), filter_hashes(filter_hashes_), seed(seed_) {
+                                                 size_t seed_,
+                                                 uint8_t delta_)
+    : filter_size(filter_size_), filter_hashes(filter_hashes_), seed(seed_), delta(delta_) {
   if (filter_size == 0)
     throw "The size of bloom filter cannot be zero";
   if (filter_hashes == 0)
     throw "The number of hash functions for bloom filter cannot be zero";
 }
 
-template <typename T, typename UnderType, size_t Delta>
-BloomRF<T, UnderType, Delta>::BloomRF(const BloomFilterRFParameters& params)
-    : BloomRF<T, UnderType, Delta>(params.filter_size,
+template <typename T, typename UnderType>
+BloomRF<T, UnderType>::BloomRF(const BloomFilterRFParameters& params)
+    : BloomRF<T, UnderType>(params.filter_size,
                                    params.filter_hashes,
-                                   params.seed) {}
+                                   params.seed, params.delta) {}
 
-template <typename T, typename UnderType, size_t Delta>
-size_t BloomRF<T, UnderType, Delta>::bloomRFHashToWord(T data, size_t i) {
+template <typename T, typename UnderType>
+size_t BloomRF<T, UnderType>::bloomRFHashToWord(T data, size_t i) {
   auto hash = this->hash(data >> ((i * delta) + delta - 1), i);
-  return hash % (numBits() >> (Delta - 1));
+  return hash % (numBits() >> (delta - 1));
 }
 
-template <typename T, typename UnderType, size_t Delta>
-UnderType BloomRF<T, UnderType, Delta>::bloomRFRemainder(T data, size_t i) {
-  T offset = (data >> (i * Delta)) & remainderMask;
+template <typename T, typename UnderType>
+UnderType BloomRF<T, UnderType>::bloomRFRemainder(T data, size_t i) {
+  T offset = (data >> (i * delta)) & ((1 << (delta - 1)) - 1);
   return 1 << offset;
 }
 
-template <typename T, typename UnderType, size_t Delta>
-size_t BloomRF<T, UnderType, Delta>::hash(T data, size_t i) {
+template <typename T, typename UnderType>
+size_t BloomRF<T, UnderType>::hash(T data, size_t i) {
   size_t hash1 = CityHash64WithSeed(reinterpret_cast<const char*>(&data),
                                     sizeof(data), seed);
   size_t hash2 =
@@ -63,16 +64,16 @@ size_t BloomRF<T, UnderType, Delta>::hash(T data, size_t i) {
   return hash1 + i * hash2 + i * i;
 }
 
-template <typename T, typename UnderType, size_t Delta>
-void BloomRF<T, UnderType, Delta>::add(T data) {
+template <typename T, typename UnderType>
+void BloomRF<T, UnderType>::add(T data) {
   for (size_t i = 0; i < hashes; ++i) {
     size_t pos = bloomRFHashToWord(data, i);
     filter[pos] |= bloomRFRemainder(data, i);
   }
 }
 
-template <typename T, typename UnderType, size_t Delta>
-bool BloomRF<T, UnderType, Delta>::find(T data) {
+template <typename T, typename UnderType>
+bool BloomRF<T, UnderType>::find(T data) {
   for (size_t i = 0; i < hashes; ++i) {
     size_t pos = bloomRFHashToWord(data, i);
     if (!(filter[pos] & bloomRFRemainder(data, i))) {
@@ -82,8 +83,8 @@ bool BloomRF<T, UnderType, Delta>::find(T data) {
   return true;
 }
 
-template <typename T, typename UnderType, size_t Delta>
-bool BloomRF<T, UnderType, Delta>::findRange(T low, T high) {
+template <typename T, typename UnderType>
+bool BloomRF<T, UnderType>::findRange(T low, T high) {
   Checks checks(low, high, {});
 
   checks.initChecks(hashes, delta);
@@ -115,8 +116,8 @@ bool BloomRF<T, UnderType, Delta>::findRange(T low, T high) {
   return false;
 }
 
-template <typename T, typename UnderType, size_t Delta>
-void BloomRF<T, UnderType, Delta>::Checks::advanceChecks(size_t times) {
+template <typename T, typename UnderType>
+void BloomRF<T, UnderType>::Checks::advanceChecks(size_t times) {
   for (int i = 0; i < times; ++i) {
     decltype(checks) new_checks;
     bool split = checks.size() > 1;
@@ -164,8 +165,8 @@ void BloomRF<T, UnderType, Delta>::Checks::advanceChecks(size_t times) {
   }
 }
 
-template <typename T, typename UnderType, size_t Delta>
-void BloomRF<T, UnderType, Delta>::Checks::initChecks(size_t num_hashes,
+template <typename T, typename UnderType>
+void BloomRF<T, UnderType>::Checks::initChecks(size_t num_hashes,
                                                       uint16_t delta) {
   T low = 0;
   T high = ~low;
@@ -179,23 +180,28 @@ void BloomRF<T, UnderType, Delta>::Checks::initChecks(size_t num_hashes,
   advanceChecks(domain_width - ((num_hashes - 1) * delta));
 }
 
-template <typename T, typename UnderType, size_t Delta>
-BloomRF<T, UnderType, Delta>::BloomRF(size_t size_,
+template <typename T, typename UnderType>
+BloomRF<T, UnderType>::BloomRF(size_t size_,
                                       size_t hashes_,
-                                      size_t seed_)
+                                      size_t seed_,
+                                      uint8_t delta_)
     : hashes(hashes_),
       seed(seed_),
       words((size_ + sizeof(UnderType) - 1) / sizeof(UnderType)),
-      delta(Delta),
-      filter(words, 0) {}
+      delta(delta_),
+      filter(words, 0) {
+  if ((1 << (delta - 1)) != 8 * sizeof(UnderType)) {
+    throw std::logic_error{"2^(delta - 1) == 8 * sizeof(UnderType) must hold."};
+  }
+}
 
 template class BloomRF<uint16_t>;
 template class BloomRF<uint32_t>;
 template class BloomRF<uint64_t>;
-template class BloomRF<uint64_t, uint32_t, 6>;
+template class BloomRF<uint64_t, uint32_t>;
 
 #ifdef __SIZEOF_INT128__
-template class BloomRF<uint64_t, uint128_t, 8>;
+template class BloomRF<uint64_t, uint128_t>;
 #endif
 
 }  // namespace filters

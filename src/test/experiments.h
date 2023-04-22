@@ -15,8 +15,7 @@ using filters::BloomRF;
 
 template <typename T,
           typename RandomNumberGenerator,
-          typename UnderType,
-          size_t Delta>
+          typename UnderType>
 class ExperimentDriver {
  public:
   ExperimentDriver(const BloomFilterRFParameters& params,
@@ -77,7 +76,7 @@ class ExperimentDriver {
   }
 
  private:
-  BloomRF<T, UnderType, Delta> bf;
+  BloomRF<T, UnderType> bf;
   std::unordered_set<T> s;
   RandomNumberGenerator dist;
 };
