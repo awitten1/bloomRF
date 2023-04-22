@@ -38,7 +38,7 @@ class BloomFilterUniform64Test : public ::testing::Test {
   // Keep track of what has actually been inserted.
   std::unordered_set<uint64_t> s;
 
-  BloomRF<uint64_t, uint64_t, 7> bf{BloomFilterRFParameters{16000, 6, 0}};
+  BloomRF<uint64_t, uint64_t> bf{BloomFilterRFParameters{16000, 6, 0, 7}};
 };
 
 class BloomFilterUniform128Test : public ::testing::Test {
@@ -53,8 +53,8 @@ class BloomFilterUniform128Test : public ::testing::Test {
   // Keep track of what has actually been inserted.
   std::unordered_set<uint64_t> s;
 
-  BloomRF<uint64_t, filters::uint128_t, 8> bf{
-      BloomFilterRFParameters{16000, 6, 0}};
+  BloomRF<uint64_t, filters::uint128_t> bf{
+      BloomFilterRFParameters{16000, 6, 0, 8}};
 };
 
 class BloomFilterUniform32Test : public ::testing::Test {
@@ -69,7 +69,7 @@ class BloomFilterUniform32Test : public ::testing::Test {
   // Keep track of what has actually been inserted.
   std::unordered_set<uint64_t> s;
 
-  BloomRF<uint64_t, uint32_t, 6> bf{BloomFilterRFParameters{16000, 6, 0}};
+  BloomRF<uint64_t, uint32_t> bf{BloomFilterRFParameters{16000, 6, 0, 6}};
 };
 
 TEST_F(BloomFilterUniform64Test, NoFalseNegativesPointQuery) {
@@ -79,7 +79,7 @@ TEST_F(BloomFilterUniform64Test, NoFalseNegativesPointQuery) {
 }
 
 TEST(OneOff, RangeQuery) {
-  BloomRF<uint64_t> bf{BloomFilterRFParameters{16000, 6, 0}};
+  BloomRF<uint64_t> bf{BloomFilterRFParameters{16000, 6, 0, 7}};
   uint64_t key = 17183560791176864955ULL;
   bf.add(key);
   EXPECT_TRUE(bf.findRange(key, key + 2));

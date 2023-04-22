@@ -9,14 +9,14 @@
 #include <limits>
 #include <random>
 
-template <typename T, typename UnderType, size_t Delta>
+template <typename T, typename UnderType, uint8_t Delta>
 void runExperimentsForUniform() {
   std::random_device rd;
   std::mt19937 mt{rd()};
   auto genUniform = [=, uniform = std::uniform_int_distribution<T>{
                             0}]() mutable { return uniform(mt); };
-  ExperimentDriver<T, decltype(genUniform), UnderType, Delta> ed64U{
-      BloomFilterRFParameters{3200000, 6, 0}, genUniform};
+  ExperimentDriver<T, decltype(genUniform), UnderType> ed64U{
+      BloomFilterRFParameters{3200000, 6, 0, Delta}, genUniform};
 
   ed64U.doInserts(2000000);
   double fp = ed64U.randomQuerys(30000);
@@ -24,7 +24,7 @@ void runExperimentsForUniform() {
   std::cout << fp << std::endl;
 }
 
-template <typename T, typename UnderType, size_t Delta>
+template <typename T, typename UnderType, uint8_t Delta>
 void runRangeExperimentsForUniform() {
   std::random_device rd;
   std::mt19937 mt{rd()};
@@ -32,8 +32,8 @@ void runRangeExperimentsForUniform() {
                             0, std::numeric_limits<T>::max() >> 1}]() mutable {
     return uniform(mt);
   };
-  ExperimentDriver<T, decltype(genUniform), UnderType, Delta> ed64U{
-      BloomFilterRFParameters{3200000, 6, 0}, genUniform};
+  ExperimentDriver<T, decltype(genUniform), UnderType> ed64U{
+      BloomFilterRFParameters{3200000, 6, 0, Delta}, genUniform};
 
   ed64U.doInserts(2000000);
   double fp =
@@ -49,7 +49,7 @@ void runRangeExperimentsForUniform() {
   std::cout << fp << std::endl;
 }
 
-template <typename T, typename UnderType, size_t Delta>
+template <typename T, typename UnderType, uint8_t Delta>
 void runExperimentsForNormal() {
   std::random_device rd;
   std::mt19937 mt{rd()};
@@ -59,8 +59,8 @@ void runExperimentsForNormal() {
     return ret;
   };
 
-  ExperimentDriver<T, decltype(genNormal), UnderType, Delta> ed64N{
-      BloomFilterRFParameters{3200000, 6, 0}, genNormal};
+  ExperimentDriver<T, decltype(genNormal), UnderType> ed64N{
+      BloomFilterRFParameters{3200000, 6, 0, Delta}, genNormal};
 
   ed64N.doInserts(2000000);
 
