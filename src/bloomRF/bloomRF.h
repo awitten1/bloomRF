@@ -12,24 +12,19 @@ namespace filters {
 
 struct BloomFilterRFParameters {
   BloomFilterRFParameters(size_t filter_size_,
-                          size_t filter_hashes_,
                           size_t seed_,
-                          uint8_t delta_);
+                          std::vector<size_t> delta_);
 
   /// size of filter in bytes.
   size_t filter_size;
-  /// number of used hash functions.
-  size_t filter_hashes;
   /// random seed for hash functions generation.
   size_t seed;
   /// Distance between layers.
-  uint8_t delta;
+  std::vector<size_t> delta;
 };
 
 #ifdef __SIZEOF_INT128__
-namespace {
 using uint128_t = __uint128_t;
-}
 #endif
 
 template <typename T, typename UnderType = uint64_t>
@@ -69,7 +64,7 @@ class BloomRF {
 
     const auto& getChecks() { return checks; }
 
-    void initChecks(size_t num_hashes, uint16_t delta);
+    void initChecks(size_t delta_sum);
 
     void advanceChecks(size_t times);
 
@@ -86,28 +81,28 @@ class BloomRF {
     friend class BloomRF;
   };
 
-  UnderType buildBitMaskForRange(T low, T high, size_t i) {
-    UnderType lowOffset = 1 << ((low >> (i * delta)) & ((1 << delta) - 1));
-    UnderType highOffset = 1 << ((high >> (i * delta)) & ((1 << delta) - 1));
+  UnderType buildBitMaskForRange(T low, T high, size_t i, int wordPos) {
+    UnderType lowOffset = 1 << ((low >> shifts[i]) & ((1 << delta[i]) - 1));
+    UnderType highOffset = 1 << ((high >> shifts[i]) & ((1 << delta[i]) - 1));
 
     UnderType ret = ~0;
     ret &= ~((1 << lowOffset) - 1);
     ret &= ((1 << (highOffset + 1)) - 1);
 
-    return ~ret;
+    return (~ret) << (wordPos * (delta[i] - 1));
   }
 
-  explicit BloomRF(size_t size_, size_t hashes_, size_t seed_, uint8_t delta);
+  explicit BloomRF(size_t size_, size_t seed_, std::vector<size_t> delta);
 
   /// Returns size in bits.
   size_t numBits() { return 8 * sizeof(UnderType) * filter.size(); }
 
-  /// Computes the ith PMHF hash of data in terms of ith generic hash.
-  /// Only returns the word that the data item maps to.
-  /// Does not return offset.
+  /// Computes the ith PMHF hash of data. Only returns the word
+  /// to which the data maps to.  Use bloomRFRemainder to retrieve the
+  /// offset.
   size_t bloomRFHashToWord(T data, size_t i);
 
-  UnderType bloomRFRemainder(T data, size_t i);
+  UnderType bloomRFRemainder(T data, size_t i, int wordPos);
 
   size_t hash(T data, size_t i);
 
@@ -120,7 +115,10 @@ class BloomRF {
   size_t words;
 
   /// Distance between layers.
-  uint16_t delta;
+  std::vector<size_t> delta;
+
+  /// Prefix sums of delta.
+  std::vector<size_t> shifts;
 
   /// Size of the domain in bits.
   uint16_t domain_size = 8 * sizeof(T);

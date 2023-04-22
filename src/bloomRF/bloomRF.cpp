@@ -12,6 +12,7 @@
 #include <type_traits>
 #include <utility>
 #include <vector>
+#include <cstdlib>
 #include "city/city.h"
 
 namespace filters {
@@ -26,33 +27,30 @@ constexpr uint64_t MAX_BLOOM_FILTER_SIZE = 1 << 30;
 }  // namespace
 
 BloomFilterRFParameters::BloomFilterRFParameters(size_t filter_size_,
-                                                 size_t filter_hashes_,
                                                  size_t seed_,
-                                                 uint8_t delta_)
-    : filter_size(filter_size_), filter_hashes(filter_hashes_), seed(seed_), delta(delta_) {
+                                                 std::vector<size_t> delta_)
+    : filter_size(filter_size_), seed(seed_), delta(std::move(delta_)) {
   if (filter_size == 0)
     throw "The size of bloom filter cannot be zero";
-  if (filter_hashes == 0)
-    throw "The number of hash functions for bloom filter cannot be zero";
 }
 
 template <typename T, typename UnderType>
 BloomRF<T, UnderType>::BloomRF(const BloomFilterRFParameters& params)
     : BloomRF<T, UnderType>(params.filter_size,
-                                   params.filter_hashes,
                                    params.seed, params.delta) {}
 
 template <typename T, typename UnderType>
 size_t BloomRF<T, UnderType>::bloomRFHashToWord(T data, size_t i) {
-  auto hash = this->hash(data >> ((i * delta) + delta - 1), i);
-  return hash % (numBits() >> (delta - 1));
+  auto hash = this->hash(data >> (shifts[i] + delta[i] - 1), i);
+  return hash % (numBits() >> (delta[i] - 1));
 }
 
 template <typename T, typename UnderType>
-UnderType BloomRF<T, UnderType>::bloomRFRemainder(T data, size_t i) {
-  T offset = (data >> (i * delta)) & ((1 << (delta - 1)) - 1);
-  return 1 << offset;
+UnderType BloomRF<T, UnderType>::bloomRFRemainder(T data, size_t i, int wordPos) {
+  T offset = (data >> shifts[i]) & ((1 << (delta[i] - 1)) - 1);
+  return (1 << offset) << (wordPos * (delta[i] - 1));
 }
+
 
 template <typename T, typename UnderType>
 size_t BloomRF<T, UnderType>::hash(T data, size_t i) {
@@ -68,7 +66,8 @@ template <typename T, typename UnderType>
 void BloomRF<T, UnderType>::add(T data) {
   for (size_t i = 0; i < hashes; ++i) {
     size_t pos = bloomRFHashToWord(data, i);
-    filter[pos] |= bloomRFRemainder(data, i);
+    std::div_t div = std::div(8 * sizeof(UnderType), (1 << (delta[i] - 1)));
+    filter[pos / div.quot] |= bloomRFRemainder(data, i, div.rem);
   }
 }
 
@@ -76,7 +75,8 @@ template <typename T, typename UnderType>
 bool BloomRF<T, UnderType>::find(T data) {
   for (size_t i = 0; i < hashes; ++i) {
     size_t pos = bloomRFHashToWord(data, i);
-    if (!(filter[pos] & bloomRFRemainder(data, i))) {
+    std::div_t div = std::div(8 * sizeof(UnderType), (1 << (delta[i] - 1)));
+    if (!(filter[pos / div.quot] & bloomRFRemainder(data, i, div.rem))) {
       return false;
     }
   }
@@ -87,24 +87,27 @@ template <typename T, typename UnderType>
 bool BloomRF<T, UnderType>::findRange(T low, T high) {
   Checks checks(low, high, {});
 
-  checks.initChecks(hashes, delta);
+  checks.initChecks(shifts.back());
 
   for (int layer = hashes - 1; layer >= 0; --layer) {
     Checks new_checks(low, high, {});
     for (const auto& check : checks.getChecks()) {
       if (check.is_covering) {
         size_t pos = bloomRFHashToWord(check.low, layer);
-        if (filter[pos] & bloomRFRemainder(check.low, layer)) {
+        std::div_t div = std::div(8 * sizeof(UnderType), (1 << (delta[layer] - 1)));
+        if (filter[pos / div.quot] & bloomRFRemainder(check.low, layer, div.rem)) {
           Checks check_for_interval{
               low,
               high,
               {typename Checks::Check{check.low, check.high, true, check.loc}}};
-          check_for_interval.advanceChecks(delta);
+          check_for_interval.advanceChecks(delta[layer]);
           new_checks.concatenateChecks(check_for_interval);
         }
       } else {
-        UnderType bitmask = buildBitMaskForRange(check.low, check.high, layer);
-        UnderType word = filter[bloomRFHashToWord(check.low, layer)];
+        size_t pos = bloomRFHashToWord(check.low, layer);
+        std::div_t div = std::div(8 * sizeof(UnderType), (1 << (delta[layer] - 1)));
+        UnderType bitmask = buildBitMaskForRange(check.low, check.high, layer, div.rem);
+        UnderType word = filter[pos / div.quot];
         if ((bitmask & word) != 0) {
           return true;
         }
@@ -166,8 +169,7 @@ void BloomRF<T, UnderType>::Checks::advanceChecks(size_t times) {
 }
 
 template <typename T, typename UnderType>
-void BloomRF<T, UnderType>::Checks::initChecks(size_t num_hashes,
-                                                      uint16_t delta) {
+void BloomRF<T, UnderType>::Checks::initChecks(size_t delta_sum) {
   T low = 0;
   T high = ~low;
 
@@ -177,22 +179,30 @@ void BloomRF<T, UnderType>::Checks::initChecks(size_t num_hashes,
   }
 
   checks.push_back({low, high, true, IntervalLocation::NotYetSplit});
-  advanceChecks(domain_width - ((num_hashes - 1) * delta));
+  advanceChecks(domain_width - delta_sum);
 }
 
 template <typename T, typename UnderType>
 BloomRF<T, UnderType>::BloomRF(size_t size_,
-                                      size_t hashes_,
                                       size_t seed_,
-                                      uint8_t delta_)
-    : hashes(hashes_),
+                                      std::vector<size_t> delta_)
+    : hashes(delta_.size()),
       seed(seed_),
       words((size_ + sizeof(UnderType) - 1) / sizeof(UnderType)),
-      delta(delta_),
-      filter(words, 0) {
-  if ((1 << (delta - 1)) != 8 * sizeof(UnderType)) {
-    throw std::logic_error{"2^(delta - 1) == 8 * sizeof(UnderType) must hold."};
+      filter(words, 0), delta(delta_), shifts(delta.size()) {
+
+  for (auto d : delta) {
+    if ((d - 1) > 8 * sizeof(UnderType)) {
+      throw std::logic_error{"The width of a PMHF word cannot exceed the width of the UnderType; \
+        For all layer widths d, (d - 1) cannot exceed 8 * sizeof(UnderType)."};
+    }
   }
+
+  /// Compute prefix sums.
+  for (int i = 1; i < delta.size(); ++i) {
+    shifts[i] = shifts[i - 1] + delta[i - 1];
+  }
+
 }
 
 template class BloomRF<uint16_t>;
