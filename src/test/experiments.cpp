@@ -9,14 +9,14 @@
 #include <limits>
 #include <random>
 
-template <typename T, typename UnderType, uint8_t Delta>
+template <typename T, typename UnderType>
 void runExperimentsForUniform() {
   std::random_device rd;
   std::mt19937 mt{rd()};
   auto genUniform = [=, uniform = std::uniform_int_distribution<T>{
                             0}]() mutable { return uniform(mt); };
   ExperimentDriver<T, decltype(genUniform), UnderType> ed64U{
-      BloomFilterRFParameters{3200000, 6, 0, Delta}, genUniform};
+      BloomFilterRFParameters{3200000, 0, {6,6,6,6,6}}, genUniform};
 
   ed64U.doInserts(2000000);
   double fp = ed64U.randomQuerys(30000);
@@ -24,7 +24,7 @@ void runExperimentsForUniform() {
   std::cout << fp << std::endl;
 }
 
-template <typename T, typename UnderType, uint8_t Delta>
+template <typename T, typename UnderType>
 void runRangeExperimentsForUniform() {
   std::random_device rd;
   std::mt19937 mt{rd()};
@@ -33,7 +33,7 @@ void runRangeExperimentsForUniform() {
     return uniform(mt);
   };
   ExperimentDriver<T, decltype(genUniform), UnderType> ed64U{
-      BloomFilterRFParameters{3200000, 6, 0, Delta}, genUniform};
+      BloomFilterRFParameters{3200000, 0, {6,6,6,6,6,6}}, genUniform};
 
   ed64U.doInserts(2000000);
   double fp =
@@ -49,7 +49,7 @@ void runRangeExperimentsForUniform() {
   std::cout << fp << std::endl;
 }
 
-template <typename T, typename UnderType, uint8_t Delta>
+template <typename T, typename UnderType>
 void runExperimentsForNormal() {
   std::random_device rd;
   std::mt19937 mt{rd()};
@@ -60,7 +60,7 @@ void runExperimentsForNormal() {
   };
 
   ExperimentDriver<T, decltype(genNormal), UnderType> ed64N{
-      BloomFilterRFParameters{3200000, 6, 0, Delta}, genNormal};
+      BloomFilterRFParameters{3200000, 0, {6,6,6,6,6,6}}, genNormal};
 
   ed64N.doInserts(2000000);
 
@@ -70,14 +70,14 @@ void runExperimentsForNormal() {
 }
 
 int main() {
-  runExperimentsForUniform<uint64_t, uint32_t, 6>();
-  runExperimentsForNormal<uint64_t, uint32_t, 6>();
-  runExperimentsForUniform<uint64_t, uint64_t, 7>();
-  runExperimentsForNormal<uint64_t, uint64_t, 7>();
-  runExperimentsForUniform<uint64_t, filters::uint128_t, 8>();
-  runExperimentsForNormal<uint64_t, filters::uint128_t, 8>();
+  runExperimentsForUniform<uint64_t, uint32_t>();
+  runExperimentsForNormal<uint64_t, uint32_t>();
+  runExperimentsForUniform<uint64_t, uint64_t>();
+  runExperimentsForNormal<uint64_t, uint64_t>();
+  runExperimentsForUniform<uint64_t, filters::uint128_t>();
+  runExperimentsForNormal<uint64_t, filters::uint128_t>();
   std::cout << "-----------RUNNING RANGE EXPERIMENTS-----------" << std::endl;
-  runRangeExperimentsForUniform<uint64_t, uint32_t, 6>();
-  runRangeExperimentsForUniform<uint64_t, uint64_t, 7>();
-  runRangeExperimentsForUniform<uint64_t, filters::uint128_t, 8>();
+  runRangeExperimentsForUniform<uint64_t, uint32_t>();
+  runRangeExperimentsForUniform<uint64_t, uint64_t>();
+  runRangeExperimentsForUniform<uint64_t, filters::uint128_t>();
 }
