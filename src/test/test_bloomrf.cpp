@@ -38,7 +38,8 @@ class BloomFilterUniform64Test : public ::testing::Test {
   // Keep track of what has actually been inserted.
   std::vector<uint64_t> s;
 
-  BloomRF<uint64_t, uint64_t> bf{BloomFilterRFParameters{16000, 0, {7,7,7,7,7,7}}};
+  BloomRF<uint64_t, uint64_t> bf{
+      BloomFilterRFParameters{16000, 0, {7, 7, 7, 7, 7, 7}}};
 };
 
 class BloomFilterUniform128Test : public ::testing::Test {
@@ -54,7 +55,7 @@ class BloomFilterUniform128Test : public ::testing::Test {
   std::unordered_set<uint64_t> s;
 
   BloomRF<uint64_t, filters::uint128_t> bf{
-      BloomFilterRFParameters{16000, 0, {8,8,8,8,8,8}}};
+      BloomFilterRFParameters{16000, 0, {8, 8, 8, 8, 8, 8}}};
 };
 
 class BloomFilterUniform32Test : public ::testing::Test {
@@ -69,11 +70,12 @@ class BloomFilterUniform32Test : public ::testing::Test {
   // Keep track of what has actually been inserted.
   std::unordered_set<uint64_t> s;
 
-  BloomRF<uint64_t, uint32_t> bf{BloomFilterRFParameters{16000, 0, {6,6,6,6,6,6}}};
+  BloomRF<uint64_t, uint32_t> bf{
+      BloomFilterRFParameters{16000, 0, {6, 6, 6, 6, 6, 6}}};
 };
 
-class BloomFilterVariableLayers: public ::testing::Test {
-  protected:
+class BloomFilterVariableLayers : public ::testing::Test {
+ protected:
   void SetUp() override {
     for (int i = 0; i < 10000; ++i) {
       auto x = randomUniformUint64();
@@ -85,7 +87,7 @@ class BloomFilterVariableLayers: public ::testing::Test {
   // Keep track of what has actually been inserted.
   std::unordered_set<uint64_t> s;
 
-  BloomRF<uint64_t> bf{BloomFilterRFParameters{16000, 0, {7,7,4,4,2,2}}};
+  BloomRF<uint64_t> bf{BloomFilterRFParameters{16000, 0, {7, 7, 4, 4, 2, 2}}};
 };
 
 TEST_F(BloomFilterUniform64Test, NoFalseNegativesPointQuery) {
@@ -95,7 +97,7 @@ TEST_F(BloomFilterUniform64Test, NoFalseNegativesPointQuery) {
 }
 
 TEST(OneOff, RangeQuery) {
-  BloomRF<uint64_t> bf{BloomFilterRFParameters{16000, 0, {7,7,7,7,7,7}}};
+  BloomRF<uint64_t> bf{BloomFilterRFParameters{16000, 0, {7, 7, 7, 7, 7, 7}}};
   uint64_t key = 17183560791176864955ULL;
   bf.add(key);
   EXPECT_TRUE(bf.findRange(key, key + 2));
@@ -156,7 +158,7 @@ TEST_F(BloomFilterUniform128Test, NoFalseNegativesPointQuery) {
 
 TEST(BloomFilterVariableLayersOneOff, BasicRange) {
   auto key = 2978291708368540195ULL;
-  BloomRF<uint64_t> bf{BloomFilterRFParameters{16000, 0, {7,7,4,4,2,2}}};
+  BloomRF<uint64_t> bf{BloomFilterRFParameters{16000, 0, {7, 7, 4, 4, 2, 2}}};
   bf.add(key);
   ASSERT_TRUE(bf.findRange(2978291708368540122ULL, 2978291708368543853ULL));
 
@@ -188,7 +190,6 @@ TEST_F(BloomFilterVariableLayers, NoFalseNegativesRangeQueryLargeRange) {
     ASSERT_TRUE(bf.findRange(low, high));
   }
 }
-
 
 TEST_F(BloomFilterUniform128Test, NoFalseNegativesRangeQueryLargeRange) {
   for (auto it = s.cbegin(); it != s.cend(); ++it) {

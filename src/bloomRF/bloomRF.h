@@ -29,7 +29,6 @@ using uint128_t = __uint128_t;
 
 template <typename T, typename UnderType = uint64_t>
 class BloomRF {
-
  public:
   using Container = std::vector<UnderType>;
 

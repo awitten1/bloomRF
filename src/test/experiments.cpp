@@ -16,7 +16,7 @@ void runExperimentsForUniform() {
   auto genUniform = [=, uniform = std::uniform_int_distribution<T>{
                             0}]() mutable { return uniform(mt); };
   ExperimentDriver<T, decltype(genUniform), UnderType> ed64U{
-      BloomFilterRFParameters{3200000, 0, {6,6,6,6,6}}, genUniform};
+      BloomFilterRFParameters{3200000, 0, {6, 6, 6, 6, 6}}, genUniform};
 
   ed64U.doInserts(2000000);
   double fp = ed64U.randomQuerys(30000);
@@ -33,7 +33,7 @@ void runRangeExperimentsForUniform() {
     return uniform(mt);
   };
   ExperimentDriver<T, decltype(genUniform), UnderType> ed64U{
-      BloomFilterRFParameters{3200000, 0, {6,6,6,6,6,6}}, genUniform};
+      BloomFilterRFParameters{3200000, 0, {6, 6, 6, 6, 6, 6}}, genUniform};
 
   ed64U.doInserts(2000000);
   double fp =
@@ -60,7 +60,7 @@ void runExperimentsForNormal() {
   };
 
   ExperimentDriver<T, decltype(genNormal), UnderType> ed64N{
-      BloomFilterRFParameters{3200000, 0, {6,6,6,6,6,6}}, genNormal};
+      BloomFilterRFParameters{3200000, 0, {6, 6, 6, 6, 6, 6}}, genNormal};
 
   ed64N.doInserts(2000000);
 

@@ -13,9 +13,7 @@
 using filters::BloomFilterRFParameters;
 using filters::BloomRF;
 
-template <typename T,
-          typename RandomNumberGenerator,
-          typename UnderType>
+template <typename T, typename RandomNumberGenerator, typename UnderType>
 class ExperimentDriver {
  public:
   ExperimentDriver(const BloomFilterRFParameters& params,
