@@ -27,19 +27,6 @@ constexpr uint64_t MAX_BLOOM_FILTER_SIZE = 1 << 30;
 
 }  // namespace
 
-template<typename T>
-void printBinary(T t) {
-  std::vector<int> print;
-  auto x = 8 * sizeof(T);
-  while(x--) {
-    print.push_back(t % 2);
-    t >>= 1;
-  }
-  std::reverse(print.begin(), print.end());
-  std::copy(print.begin(), print.end(), std::ostream_iterator<int>(std::cerr));
-  std::cerr << std::endl;
-}
-
 BloomFilterRFParameters::BloomFilterRFParameters(size_t filter_size_,
                                                  size_t seed_,
                                                  std::vector<size_t> delta_)
@@ -84,13 +71,9 @@ template <typename T, typename UnderType>
 void BloomRF<T, UnderType>::add(T data) {
   for (size_t i = 0; i < hashes; ++i) {
     size_t pos = bloomRFHashToWord(data, i);
-    //printBinary(data >> shifts[i]);
     auto div = getFilterPosAndOffset(pos, i);
-    //std::cout << "pos: " << div.quot << ", offset: " << div.rem << std::endl;
-    //std::cout << "layer: " << i << std::endl;
     filter[div.quot] |= bloomRFRemainder(data, i, div.rem);
   }
-  //std::cout << "---- done adding ------" << std::endl;
 }
 
 template <typename T, typename UnderType>
@@ -119,13 +102,9 @@ bool BloomRF<T, UnderType>::findRange(T lkey, T hkey) {
 
   for (int layer = hashes - 1; layer >= 0; --layer) {
     Checks new_checks(lkey, hkey, {});
-    //std::cout << "layer: " << layer << std::endl;
     for (const auto& check : checks.getChecks()) {
-      //std::cout << "low: " << check.low << ", high: " << check.high << std::endl;
-      //printBinary(check.low);
       if (check.low < lkey || check.high > hkey) {
         assert((check.high - check.low + 1 == (T{1} << shifts[layer])));
-        //std::cout << "is covering" << std::endl;
         size_t pos = bloomRFHashToWord(check.low, layer);
         auto div = getFilterPosAndOffset(pos, layer);
         if (filter[div.quot] & bloomRFRemainder(check.low, layer, div.rem)) {
@@ -137,16 +116,10 @@ bool BloomRF<T, UnderType>::findRange(T lkey, T hkey) {
           new_checks.concatenateChecks(check_for_interval);
         }
       } else {
-        //std::cout << "not covering" << std::endl;
-        //std::cout << check.high - check.low << std::endl;
         size_t pos = bloomRFHashToWord(check.low, layer);
         auto div = getFilterPosAndOffset(pos, layer);
-        //printBinary(check.low);
-        //std::cout << "pos: " << div.quot << ", offset: " << div.rem << std::endl;
         UnderType bitmask = buildBitMaskForRange(check.low, check.high, layer, div.rem);
-        //printBinary(bitmask);
         UnderType word = filter[div.quot];
-        //printBinary(word);
         if ((bitmask & word) != 0) {
           return true;
         }
@@ -161,8 +134,7 @@ bool BloomRF<T, UnderType>::findRange(T lkey, T hkey) {
 template <typename T, typename UnderType>
 void BloomRF<T, UnderType>::Checks::advanceChecks(size_t times) {
   for (int i = 0; i < times; ++i) {
-    decltype(checks) new_checks;
-    //std::cout << "iter: " << i << std::endl;
+    std::vector<Check> new_checks;
     for (const auto& check : checks) {
       if (check.low < lkey || check.high > hkey) {
         T low = check.low;
