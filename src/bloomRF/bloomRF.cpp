@@ -27,6 +27,19 @@ constexpr uint64_t MAX_BLOOM_FILTER_SIZE = 1 << 30;
 
 }  // namespace
 
+template<typename T>
+void printBinary(T t) {
+  std::vector<int> print;
+  auto x = 8 * sizeof(T);
+  while(x--) {
+    print.push_back(t % 2);
+    t >>= 1;
+  }
+  std::reverse(print.begin(), print.end());
+  std::copy(print.begin(), print.end(), std::ostream_iterator<int>(std::cerr));
+  std::cerr << std::endl;
+}
+
 BloomFilterRFParameters::BloomFilterRFParameters(size_t filter_size_,
                                                  size_t seed_,
                                                  std::vector<size_t> delta_)
@@ -49,7 +62,7 @@ size_t BloomRF<T, UnderType>::bloomRFHashToWord(T data, size_t i) {
 template <typename T, typename UnderType>
 UnderType BloomRF<T, UnderType>::bloomRFRemainder(T data, size_t i, int wordPos) {
   UnderType offset = (data >> shifts[i]) & ((1 << (delta[i] - 1)) - 1);
-  UnderType ret = (1 << offset);
+  UnderType ret = (UnderType{1} << offset);
   ret = ret << (wordPos * (1 << (delta[i] - 1)));
   return ret;
 }
@@ -71,9 +84,13 @@ template <typename T, typename UnderType>
 void BloomRF<T, UnderType>::add(T data) {
   for (size_t i = 0; i < hashes; ++i) {
     size_t pos = bloomRFHashToWord(data, i);
+    //printBinary(data >> shifts[i]);
     auto div = getFilterPosAndOffset(pos, i);
+    //std::cout << "pos: " << div.quot << ", offset: " << div.rem << std::endl;
+    //std::cout << "layer: " << i << std::endl;
     filter[div.quot] |= bloomRFRemainder(data, i, div.rem);
   }
+  //std::cout << "---- done adding ------" << std::endl;
 }
 
 template <typename T, typename UnderType>
@@ -95,30 +112,41 @@ std::ldiv_t BloomRF<T, UnderType>::getFilterPosAndOffset(size_t pos, size_t i) {
 }
 
 template <typename T, typename UnderType>
-bool BloomRF<T, UnderType>::findRange(T low, T high) {
-  Checks checks(low, high, {});
+bool BloomRF<T, UnderType>::findRange(T lkey, T hkey) {
+  Checks checks(lkey, hkey, {});
 
   checks.initChecks(shifts.back());
 
   for (int layer = hashes - 1; layer >= 0; --layer) {
-    Checks new_checks(low, high, {});
+    Checks new_checks(lkey, hkey, {});
+    //std::cout << "layer: " << layer << std::endl;
     for (const auto& check : checks.getChecks()) {
-      if (check.is_covering) {
+      //std::cout << "low: " << check.low << ", high: " << check.high << std::endl;
+      //printBinary(check.low);
+      if (check.low < lkey || check.high > hkey) {
+        assert((check.high - check.low + 1 == (T{1} << shifts[layer])));
+        //std::cout << "is covering" << std::endl;
         size_t pos = bloomRFHashToWord(check.low, layer);
         auto div = getFilterPosAndOffset(pos, layer);
         if (filter[div.quot] & bloomRFRemainder(check.low, layer, div.rem)) {
           Checks check_for_interval{
-              low,
-              high,
-              {typename Checks::Check{check.low, check.high, true, check.loc}}};
+              lkey,
+              hkey,
+              {typename Checks::Check{check.low, check.high, check.loc}}};
           check_for_interval.advanceChecks(delta[layer - 1]);
           new_checks.concatenateChecks(check_for_interval);
         }
       } else {
+        //std::cout << "not covering" << std::endl;
+        //std::cout << check.high - check.low << std::endl;
         size_t pos = bloomRFHashToWord(check.low, layer);
         auto div = getFilterPosAndOffset(pos, layer);
+        //printBinary(check.low);
+        //std::cout << "pos: " << div.quot << ", offset: " << div.rem << std::endl;
         UnderType bitmask = buildBitMaskForRange(check.low, check.high, layer, div.rem);
+        //printBinary(bitmask);
         UnderType word = filter[div.quot];
+        //printBinary(word);
         if ((bitmask & word) != 0) {
           return true;
         }
@@ -134,41 +162,40 @@ template <typename T, typename UnderType>
 void BloomRF<T, UnderType>::Checks::advanceChecks(size_t times) {
   for (int i = 0; i < times; ++i) {
     decltype(checks) new_checks;
-    bool split = checks.size() > 1;
+    //std::cout << "iter: " << i << std::endl;
     for (const auto& check : checks) {
-      if (check.is_covering) {
+      if (check.low < lkey || check.high > hkey) {
         T low = check.low;
         T high = check.high;
         T mid = high - ((high - low) >> 1);
         if (check.loc == IntervalLocation::NotYetSplit) {
           if (mid <= lkey) {
-            bool covering = mid < lkey || high > hkey;
             new_checks.push_back(
-                {mid, high, covering, IntervalLocation::NotYetSplit});
+                {mid, high, IntervalLocation::NotYetSplit});
           } else if (mid - 1 >= hkey) {
             bool covering = low < lkey || mid - 1 > hkey;
-            new_checks.push_back({low, static_cast<T>(mid - 1), covering,
+            new_checks.push_back({low, static_cast<T>(mid - 1),
                                   IntervalLocation::NotYetSplit});
           } else {
-            new_checks.push_back({low, static_cast<T>(mid - 1), lkey < low,
+            new_checks.push_back({low, static_cast<T>(mid - 1),
                                   IntervalLocation::Left});
             new_checks.push_back(
-                {mid, high, hkey > high, IntervalLocation::Right});
+                {mid, high, IntervalLocation::Right});
           }
         } else if (check.loc == IntervalLocation::Left) {
           bool is_left_covering = mid > lkey;
           new_checks.push_back(
-              {mid, high, !is_left_covering, IntervalLocation::Left});
+              {mid, high, IntervalLocation::Left});
           if (is_left_covering) {
             new_checks.push_back(
-                {low, static_cast<T>(mid - 1), true, IntervalLocation::Left});
+                {low, static_cast<T>(mid - 1), IntervalLocation::Left});
           }
         } else {
-          bool is_right_covering = mid < hkey;
+          bool is_right_covering = mid <= hkey;
           new_checks.push_back({low, static_cast<T>(mid - 1),
-                                !is_right_covering, IntervalLocation::Right});
+                                 IntervalLocation::Right});
           if (is_right_covering) {
-            new_checks.push_back({mid, high, true, IntervalLocation::Right});
+            new_checks.push_back({mid, high, IntervalLocation::Right});
           }
         }
       } else {
@@ -189,7 +216,7 @@ void BloomRF<T, UnderType>::Checks::initChecks(size_t delta_sum) {
         "Cannot init checks on a non-empty checks instance."};
   }
 
-  checks.push_back({low, high, true, IntervalLocation::NotYetSplit});
+  checks.push_back({low, high, IntervalLocation::NotYetSplit});
   advanceChecks(domain_width - delta_sum);
 }
 
@@ -198,10 +225,12 @@ UnderType BloomRF<T, UnderType>::buildBitMaskForRange(T low, T high, size_t i, i
     UnderType lowOffset = ((low >> shifts[i]) & ((1 << (delta[i] - 1)) - 1));
     UnderType highOffset = ((high >> shifts[i]) & ((1 << (delta[i] - 1)) - 1));
     UnderType ret = ~0;
-    ret ^= (1 << lowOffset) - 1;
+    ret ^= (UnderType{1} << lowOffset) - 1;
+
     if (highOffset < 8 * sizeof(UnderType) - 1) {
-      ret &= (1 << (highOffset + 1)) - 1;
+      ret &= (UnderType{1} << (highOffset + 1)) - 1;
     }
+
     ret = ret << (wordPos * (1 << (delta[i] - 1)));
     return ret;
 }
