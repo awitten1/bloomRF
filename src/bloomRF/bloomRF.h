@@ -50,12 +50,11 @@ class BloomRF {
     enum class IntervalLocation { Left, Right, NotYetSplit };
 
     struct Check {
-      Check(T low_, T high_, bool is_covering_, IntervalLocation loc_)
-          : low{low_}, high{high_}, is_covering{is_covering_}, loc{loc_} {}
+      Check(T low_, T high_, IntervalLocation loc_)
+          : low{low_}, high{high_}, loc{loc_} {}
 
       T low;
       T high;
-      bool is_covering;
       IntervalLocation loc;
     };
 
