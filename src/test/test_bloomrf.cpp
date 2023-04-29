@@ -1,4 +1,3 @@
-#include "gtest/gtest.h"
 #include <_types/_uint16_t.h>
 #include <_types/_uint32_t.h>
 #include <_types/_uint64_t.h>
@@ -6,6 +5,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdlib>
+#include "gtest/gtest.h"
 
 #include <iomanip>
 #include <iterator>
@@ -29,7 +29,8 @@ uint64_t randomUniformUint64() {
 }
 
 class BloomFilterUniform128Test : public ::testing::Test,
-     public testing::WithParamInterface<std::pair<int, BloomFilterRFParameters>> {
+                                  public testing::WithParamInterface<
+                                      std::pair<int, BloomFilterRFParameters>> {
  protected:
   void SetUp() override {
     for (int i = 0; i < GetParam().first; ++i) {
@@ -59,7 +60,6 @@ class BloomFilterUniform32Test : public ::testing::Test {
   BloomRF<uint64_t, uint32_t> bf{
       BloomFilterRFParameters{16000, 0, {6, 6, 6, 6, 6, 6}}};
 };
-
 
 TEST_P(BloomFilterUniform128Test, NoFalseNegativesPointQuery) {
   for (auto it = s.cbegin(); it != s.cend(); ++it) {
@@ -116,27 +116,26 @@ BloomFilterRFParameters genParams() {
   std::random_device rd;
   std::mt19937_64 e2(rd());
 
-  std::uniform_int_distribution<uint64_t> layer(
-      2, 8);
+  std::uniform_int_distribution<uint64_t> layer(2, 8);
 
   std::vector<size_t> layers(7);
   std::generate(layers.begin(), layers.end(), [&]() { return layer(rd); });
   return BloomFilterRFParameters{16000, 0, layers};
 }
 
-INSTANTIATE_TEST_SUITE_P(NoFalseNegatives,
-                         BloomFilterUniform128Test,
-                         testing::ValuesIn(
-                            []() {
-                              std::vector<std::pair<int, BloomFilterRFParameters>> ret;
-                              std::generate_n(std::back_inserter(ret), 15, []() { return std::pair<int, BloomFilterRFParameters>{10000, genParams()}; });
-                              return ret;
-                            }()
-                         )
-                        );
+INSTANTIATE_TEST_SUITE_P(
+    NoFalseNegatives,
+    BloomFilterUniform128Test,
+    testing::ValuesIn([]() {
+      std::vector<std::pair<int, BloomFilterRFParameters>> ret;
+      std::generate_n(std::back_inserter(ret), 15, []() {
+        return std::pair<int, BloomFilterRFParameters>{10000, genParams()};
+      });
+      return ret;
+    }()));
 
 TEST(OneOff, RangeQuery) {
-  BloomRF<uint64_t> bf{BloomFilterRFParameters{16000, 0, {2,2}}};
+  BloomRF<uint64_t> bf{BloomFilterRFParameters{16000, 0, {2, 2}}};
   uint64_t key = 17183560791176864955ULL;
   bf.add(key);
   EXPECT_TRUE(bf.findRange(key, key + 2));
@@ -157,9 +156,7 @@ TEST(OneOff, RangeQuery) {
   bf.add(key);
   EXPECT_TRUE(bf.findRange(key - 3, key));
 
-
   key = 7947621528143548327;
   bf.add(key);
   EXPECT_TRUE(bf.findRange(key - 9, key + 8));
 }
-
