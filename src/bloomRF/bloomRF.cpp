@@ -216,6 +216,11 @@ BloomRF<T, UnderType>::BloomRF(size_t size_,
       filter(words, 0),
       delta(delta_),
       shifts(delta.size()) {
+
+  if (delta.size() == 0) {
+    throw std::logic_error{"Delta vector cannot be empty."};
+  }
+
   for (auto d : delta) {
     if (8 * sizeof(UnderType) % (1 << (d - 1))) {
       std::ostringstream os;
