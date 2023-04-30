@@ -136,9 +136,8 @@ void BloomRF<T, UnderType>::Checks::advanceChecks(size_t times) {
     std::vector<Check> new_checks;
     for (const auto& check : checks) {
       if (check.low < lkey || check.high > hkey) {
-        T low = check.low;
-        T high = check.high;
-        T mid = high - ((high - low) >> 1);
+
+        T mid = check.high - ((check.high - check.low) >> 1);
         if (check.loc == IntervalLocation::NotYetSplit) {
 
           /// If the interval has not yet split, then there must be only one
@@ -146,29 +145,29 @@ void BloomRF<T, UnderType>::Checks::advanceChecks(size_t times) {
           assert(checks.size() == 1);
 
           if (mid <= lkey) {
-            new_checks.push_back({mid, high, IntervalLocation::NotYetSplit});
+            new_checks.push_back({mid, check.high, IntervalLocation::NotYetSplit});
           } else if (mid - 1 >= hkey) {
-            bool covering = low < lkey || mid - 1 > hkey;
+            bool covering = check.low < lkey || mid - 1 > hkey;
             new_checks.push_back(
-                {low, static_cast<T>(mid - 1), IntervalLocation::NotYetSplit});
+                {check.low, static_cast<T>(mid - 1), IntervalLocation::NotYetSplit});
           } else {
             new_checks.push_back(
-                {low, static_cast<T>(mid - 1), IntervalLocation::Left});
-            new_checks.push_back({mid, high, IntervalLocation::Right});
+                {check.low, static_cast<T>(mid - 1), IntervalLocation::Left});
+            new_checks.push_back({mid, check.high, IntervalLocation::Right});
           }
         } else if (check.loc == IntervalLocation::Left) {
           bool is_left_covering = mid > lkey;
-          new_checks.push_back({mid, high, IntervalLocation::Left});
+          new_checks.push_back({mid, check.high, IntervalLocation::Left});
           if (is_left_covering) {
             new_checks.push_back(
-                {low, static_cast<T>(mid - 1), IntervalLocation::Left});
+                {check.low, static_cast<T>(mid - 1), IntervalLocation::Left});
           }
         } else {
           bool is_right_covering = mid <= hkey;
           new_checks.push_back(
-              {low, static_cast<T>(mid - 1), IntervalLocation::Right});
+              {check.low, static_cast<T>(mid - 1), IntervalLocation::Right});
           if (is_right_covering) {
-            new_checks.push_back({mid, high, IntervalLocation::Right});
+            new_checks.push_back({mid, check.high, IntervalLocation::Right});
           }
         }
       } else {
