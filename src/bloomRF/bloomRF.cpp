@@ -140,6 +140,11 @@ void BloomRF<T, UnderType>::Checks::advanceChecks(size_t times) {
         T high = check.high;
         T mid = high - ((high - low) >> 1);
         if (check.loc == IntervalLocation::NotYetSplit) {
+
+          /// If the interval has not yet split, then there must be only one
+          /// check.
+          assert(checks.size() == 1);
+
           if (mid <= lkey) {
             new_checks.push_back({mid, high, IntervalLocation::NotYetSplit});
           } else if (mid - 1 >= hkey) {
@@ -217,7 +222,7 @@ BloomRF<T, UnderType>::BloomRF(size_t size_,
       delta(delta_),
       shifts(delta.size()) {
 
-  if (delta.size() == 0) {
+  if (delta.empty()) {
     throw std::logic_error{"Delta vector cannot be empty."};
   }
 
