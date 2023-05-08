@@ -123,6 +123,8 @@ BloomFilterRFParameters genParams() {
   return BloomFilterRFParameters{16000, 0, layers};
 }
 
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(BloomFilterUniform128Test);
+
 INSTANTIATE_TEST_SUITE_P(
     NoFalseNegatives,
     BloomFilterUniform128Test,

@@ -134,7 +134,10 @@ template <typename T, typename UnderType>
 void BloomRF<T, UnderType>::Checks::advanceChecks(size_t times) {
   for (int i = 0; i < times; ++i) {
     std::vector<Check> new_checks;
+    assert(checks.size() <= 4);
+
     for (const auto& check : checks) {
+      std::cerr << "[" << check.low << ", " << check.high << "]" << ", ";
       if (check.low < lkey || check.high > hkey) {
 
         T mid = check.high - ((check.high - check.low) >> 1);
@@ -156,24 +159,38 @@ void BloomRF<T, UnderType>::Checks::advanceChecks(size_t times) {
             new_checks.push_back({mid, check.high, IntervalLocation::Right});
           }
         } else if (check.loc == IntervalLocation::Left) {
-          bool is_left_covering = mid > lkey;
-          new_checks.push_back({mid, check.high, IntervalLocation::Left});
-          if (is_left_covering) {
+          if (mid > lkey) {
             new_checks.push_back(
                 {check.low, static_cast<T>(mid - 1), IntervalLocation::Left});
           }
+          new_checks.push_back({mid, check.high, IntervalLocation::Left});
+
         } else {
-          bool is_right_covering = mid <= hkey;
-          new_checks.push_back(
+          if (!new_checks.empty() && new_checks.back().loc == IntervalLocation::Right && new_checks.back().high <= hkey && new_checks.back().high + 1 == check.low) {
+            Check back = new_checks.back();
+            new_checks.pop_back();
+            back.high = static_cast<T>(mid - 1);
+            new_checks.push_back(back);
+          } else {
+            new_checks.push_back(
               {check.low, static_cast<T>(mid - 1), IntervalLocation::Right});
-          if (is_right_covering) {
+          }
+          if (mid <= hkey) {
             new_checks.push_back({mid, check.high, IntervalLocation::Right});
           }
         }
       } else {
-        new_checks.push_back(check);
+        if (!new_checks.empty() && check.loc == IntervalLocation::Left && !new_checks.empty() && new_checks.back().low >= lkey && new_checks.back().high + 1 == check.low) {
+          Check back = new_checks.back();
+          new_checks.pop_back();
+          back.high = check.high;
+          new_checks.push_back(back);
+        } else {
+          new_checks.push_back(check);
+        }
       }
     }
+    std::cerr << std::endl;
     checks = std::move(new_checks);
   }
 }
