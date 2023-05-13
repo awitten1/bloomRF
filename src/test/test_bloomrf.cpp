@@ -116,9 +116,9 @@ BloomFilterRFParameters genParams() {
   std::random_device rd;
   std::mt19937_64 e2(rd());
 
-  std::uniform_int_distribution<uint64_t> layer(2, 8);
+  std::uniform_int_distribution<uint64_t> layer(1, 8);
 
-  std::vector<size_t> layers(7);
+  std::vector<size_t> layers((rand() % 8) + 2);
   std::generate(layers.begin(), layers.end(), [&]() { return layer(rd); });
   return BloomFilterRFParameters{16000, 0, layers};
 }

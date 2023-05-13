@@ -36,15 +36,15 @@ void runRangeExperimentsForUniform() {
       BloomFilterRFParameters{3200000, 0, {8, 8, 7, 6, 5, 4, 3}}, genUniform};
 
   ed64U.doInserts(2000000);
-  double fp =
-      ed64U.randomRangeQuerys(30000,
-                              [=, uniform = std::uniform_int_distribution<T>{
-                                      (std::numeric_limits<T>::max() >> 1) + 1,
-                                      std::numeric_limits<T>::max() -
-                                          100000000}]() mutable -> std::pair<T, T> {
-                                auto start = uniform(mt);
-                                return {start, start + 100000000};
-                              });
+  double fp = ed64U.randomRangeQuerys(
+      30000,
+      [=, uniform = std::uniform_int_distribution<T>{
+              (std::numeric_limits<T>::max() >> 1) + 1,
+              std::numeric_limits<T>::max() -
+                  100000000}]() mutable -> std::pair<T, T> {
+        auto start = uniform(mt);
+        return {start, start + 100000000};
+      });
 
   std::cout << fp << std::endl;
 }
@@ -77,7 +77,7 @@ int main() {
   runExperimentsForUniform<uint64_t, filters::uint128_t>();
   runExperimentsForNormal<uint64_t, filters::uint128_t>();
   std::cout << "-----------RUNNING RANGE EXPERIMENTS-----------" << std::endl;
-  //runRangeExperimentsForUniform<uint64_t, uint32_t>();
-  //runRangeExperimentsForUniform<uint64_t, uint64_t>();
+  // runRangeExperimentsForUniform<uint64_t, uint32_t>();
+  // runRangeExperimentsForUniform<uint64_t, uint64_t>();
   runRangeExperimentsForUniform<uint64_t, filters::uint128_t>();
 }
