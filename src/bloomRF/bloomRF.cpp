@@ -101,10 +101,10 @@ bool BloomRF<T, UnderType>::findRange(T lkey, T hkey) {
 
   for (int layer = hashes - 1; layer >= 0; --layer) {
     Checks new_checks(lkey, hkey, {});
-    //std::cout << std::endl << "shift: " << shifts[layer] << std::endl;
+    // std::cout << std::endl << "shift: " << shifts[layer] << std::endl;
     for (const auto& check : checks.getChecks()) {
-      //std::cout << "[" << check.low << "," << check.high << "]"
-      //          << ", ";
+      // std::cout << "[" << check.low << "," << check.high << "]"
+      //           << ", ";
       if (check.low < lkey || check.high > hkey) {
         size_t pos = bloomRFHashToWord(check.low, layer);
         auto div = getFilterPosAndOffset(pos, layer);
@@ -113,7 +113,8 @@ bool BloomRF<T, UnderType>::findRange(T lkey, T hkey) {
               lkey,
               hkey,
               {typename Checks::Check{check.low, check.high, check.loc}}};
-          check_for_interval.advanceChecks(delta[layer - 1], 1 << (delta[layer - 1] - 1));
+          check_for_interval.advanceChecks(delta[layer - 1],
+                                           1 << (delta[layer - 1] - 1));
           new_checks.concatenateChecks(check_for_interval);
         }
       } else {
@@ -134,13 +135,15 @@ bool BloomRF<T, UnderType>::findRange(T lkey, T hkey) {
 }
 
 template <typename T, typename UnderType>
-void BloomRF<T, UnderType>::Checks::advanceChecks(size_t times, T minIntervalSize) {
+void BloomRF<T, UnderType>::Checks::advanceChecks(size_t times,
+                                                  T minIntervalSize) {
   for (int i = 0; i < times; ++i) {
     std::vector<Check> new_checks;
     for (const auto& check : checks) {
       T mid = check.high - ((check.high - check.low) >> 1);
 
-      if ((check.low < lkey || check.high > hkey) || (check.high - check.low) > minIntervalSize) {
+      if ((check.low < lkey || check.high > hkey) ||
+          (check.high - check.low) > minIntervalSize) {
         if (check.loc == IntervalLocation::NotYetSplit) {
           /// If the interval has not yet split, then there must be only one
           /// check.
@@ -179,7 +182,8 @@ void BloomRF<T, UnderType>::Checks::advanceChecks(size_t times, T minIntervalSiz
 }
 
 template <typename T, typename UnderType>
-void BloomRF<T, UnderType>::Checks::initChecks(size_t delta_sum, size_t delta_back) {
+void BloomRF<T, UnderType>::Checks::initChecks(size_t delta_sum,
+                                               size_t delta_back) {
   T low = 0;
   T high = ~low;
 
