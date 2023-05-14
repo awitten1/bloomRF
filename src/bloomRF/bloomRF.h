@@ -62,9 +62,9 @@ class BloomRF {
 
     const auto& getChecks() { return checks; }
 
-    void initChecks(size_t delta_sum);
+    void initChecks(size_t delta_sum, size_t delta_back);
 
-    void advanceChecks(size_t times);
+    void advanceChecks(size_t times, T minIntervalSize);
 
     void concatenateChecks(const Checks& other) {
       checks.insert(checks.end(), other.checks.begin(), other.checks.end());

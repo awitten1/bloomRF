@@ -118,10 +118,12 @@ BloomFilterRFParameters genParams() {
 
   std::uniform_int_distribution<uint64_t> layer(1, 8);
 
-  std::vector<size_t> layers((rand() % 8) + 2);
+  std::vector<size_t> layers((rand() % 8) + 1);
   std::generate(layers.begin(), layers.end(), [&]() { return layer(rd); });
   return BloomFilterRFParameters{16000, 0, layers};
 }
+
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(BloomFilterUniform128Test);
 
 INSTANTIATE_TEST_SUITE_P(
     NoFalseNegatives,
@@ -135,28 +137,36 @@ INSTANTIATE_TEST_SUITE_P(
     }()));
 
 TEST(OneOff, RangeQuery) {
-  BloomRF<uint64_t> bf{BloomFilterRFParameters{16000, 0, {2, 2}}};
+  BloomRF<uint64_t> bf{BloomFilterRFParameters{16000, 0, {2}}};
   uint64_t key = 17183560791176864955ULL;
   bf.add(key);
-  EXPECT_TRUE(bf.findRange(key, key + 2));
+  ASSERT_TRUE(bf.findRange(key, key + 2));
 
   key = 6734315744289451875ULL;
   bf.add(key);
-  EXPECT_TRUE(bf.findRange(key, key + 1));
+  ASSERT_TRUE(bf.findRange(key, key + 1));
 
   key = 16343179362131379382ULL;
   bf.add(key);
-  EXPECT_TRUE(bf.findRange(key, key));
+  ASSERT_TRUE(bf.findRange(key, key));
 
   key = 1894361899248432030ULL;
   bf.add(key);
-  EXPECT_TRUE(bf.findRange(key, key + 1));
+  ASSERT_TRUE(bf.findRange(key, key + 1));
 
   key = 994988673032400334ULL;
   bf.add(key);
-  EXPECT_TRUE(bf.findRange(key - 3, key));
+  ASSERT_TRUE(bf.findRange(key - 3, key));
+
+  key = 6005695518738970761ULL;
+  bf.add(key);
+  ASSERT_TRUE(bf.findRange(key - 9, key + 7));
+
+  key = 9910494239719928678ULL;
+  bf.add(key);
+  ASSERT_TRUE(bf.findRange(key - 7, key + 9));
 
   key = 7947621528143548327;
   bf.add(key);
-  EXPECT_TRUE(bf.findRange(key - 9, key + 8));
+  ASSERT_TRUE(bf.findRange(key - 9, key + 8));
 }
