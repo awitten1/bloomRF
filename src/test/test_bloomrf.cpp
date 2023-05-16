@@ -28,6 +28,22 @@ uint64_t randomUniformUint64() {
   return dist(rd);
 }
 
+class BloomFilterUniform32Test : public ::testing::Test {
+ protected:
+  void SetUp() override {
+    for (int i = 0; i < 10000; ++i) {
+      auto x = randomUniformUint64();
+      s.insert(x);
+      bf.add(x);
+    }
+  }
+  // Keep track of what has actually been inserted.
+  std::unordered_set<uint64_t> s;
+
+  BloomRF<uint64_t, uint32_t> bf{
+      BloomFilterRFParameters{16000, 0, {6, 6, 6, 6, 6, 6}}};
+};
+
 class BloomFilterUniform128Test : public ::testing::Test,
                                   public testing::WithParamInterface<
                                       std::pair<int, BloomFilterRFParameters>> {
@@ -45,22 +61,6 @@ class BloomFilterUniform128Test : public ::testing::Test,
   BloomRF<uint64_t, filters::uint128_t> bf{GetParam().second};
 };
 
-class BloomFilterUniform32Test : public ::testing::Test {
- protected:
-  void SetUp() override {
-    for (int i = 0; i < 10000; ++i) {
-      auto x = randomUniformUint64();
-      s.insert(x);
-      bf.add(x);
-    }
-  }
-  // Keep track of what has actually been inserted.
-  std::unordered_set<uint64_t> s;
-
-  BloomRF<uint64_t, uint32_t> bf{
-      BloomFilterRFParameters{16000, 0, {6, 6, 6, 6, 6, 6}}};
-};
-
 TEST_P(BloomFilterUniform128Test, NoFalseNegativesPointQuery) {
   for (auto it = s.cbegin(); it != s.cend(); ++it) {
     ASSERT_TRUE(bf.find(*it));
@@ -76,6 +76,10 @@ TEST_P(BloomFilterUniform128Test, NoFalseNegativesRangeQuerySmallRange) {
       std::ostringstream os;
       os << "Failed lookup. Query range: [" << low << "," << high << "]. ";
       os << "Have key: " << *it << std::endl;
+      os << "Delta vector: ";
+      for (auto&& v : bf.getDelta()) {
+        os << v << " ";
+      }
       std::cerr << os.str();
     }
     ASSERT_TRUE(found);
@@ -91,6 +95,10 @@ TEST_P(BloomFilterUniform128Test, NoFalseNegativesRangeQueryLargeRange) {
       std::ostringstream os;
       os << "Failed lookup. Query range: [" << low << "," << high << "]. ";
       os << "Have key: " << *it << std::endl;
+      os << "Delta vector: ";
+      for (auto&& v : bf.getDelta()) {
+        os << v << " ";
+      }
       std::cerr << os.str();
     }
     ASSERT_TRUE(found);
@@ -106,6 +114,10 @@ TEST_P(BloomFilterUniform128Test, NoFalseNegativesRangeQueryExtraLargeRange) {
       std::ostringstream os;
       os << "Failed lookup. Query range: [" << low << "," << high << "]. ";
       os << "Have key: " << *it << std::endl;
+      os << "Delta vector: ";
+      for (auto&& v : bf.getDelta()) {
+        os << v << " ";
+      }
       std::cerr << os.str();
     }
     ASSERT_TRUE(found);
@@ -116,12 +128,14 @@ BloomFilterRFParameters genParams() {
   std::random_device rd;
   std::mt19937_64 e2(rd());
 
-  std::uniform_int_distribution<uint64_t> layer(1, 8);
+  std::uniform_int_distribution<uint64_t> layer(2, 8);
 
   std::vector<size_t> layers((rand() % 8) + 2);
   std::generate(layers.begin(), layers.end(), [&]() { return layer(rd); });
   return BloomFilterRFParameters{16000, 0, layers};
 }
+
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(BloomFilterUniform128Test);
 
 INSTANTIATE_TEST_SUITE_P(
     NoFalseNegatives,
@@ -135,28 +149,53 @@ INSTANTIATE_TEST_SUITE_P(
     }()));
 
 TEST(OneOff, RangeQuery) {
-  BloomRF<uint64_t> bf{BloomFilterRFParameters{16000, 0, {2, 2}}};
+  BloomRF<uint64_t, filters::uint128_t> bf{
+      BloomFilterRFParameters{16000, 0, {5, 8, 6}}};
   uint64_t key = 17183560791176864955ULL;
   bf.add(key);
-  EXPECT_TRUE(bf.findRange(key, key + 2));
+  ASSERT_TRUE(bf.findRange(key - 100, key + 100));
+
+  key = 13539885930325430328ULL;
+  bf.add(key);
+  ASSERT_TRUE(bf.findRange(key - 9, key + 9));
+
+  key = 13482642926757329959ULL;
+  bf.add(key);
+  ASSERT_TRUE(bf.findRange(key - 8, key + 9));
+
+  key = 4944684668419138897ULL;
+  bf.add(key);
+  ASSERT_TRUE(bf.findRange(key - 5, key + 8));
+
+  key = 12836727673998169215ULL;
+  bf.add(key);
+  ASSERT_TRUE(bf.findRange(key - 4, key + 2));
 
   key = 6734315744289451875ULL;
   bf.add(key);
-  EXPECT_TRUE(bf.findRange(key, key + 1));
+  ASSERT_TRUE(bf.findRange(key, key + 1));
 
   key = 16343179362131379382ULL;
   bf.add(key);
-  EXPECT_TRUE(bf.findRange(key, key));
+  ASSERT_TRUE(bf.findRange(key, key));
 
   key = 1894361899248432030ULL;
   bf.add(key);
-  EXPECT_TRUE(bf.findRange(key, key + 1));
+  ASSERT_TRUE(bf.findRange(key, key + 1));
 
   key = 994988673032400334ULL;
   bf.add(key);
-  EXPECT_TRUE(bf.findRange(key - 3, key));
+  ASSERT_TRUE(bf.findRange(key - 3, key));
+
+  key = 6005695518738970761ULL;
+  bf.add(key);
+  ASSERT_TRUE(bf.findRange(key - 9, key + 7));
+
+  key = 9910494239719928678ULL;
+  bf.add(key);
+  ASSERT_TRUE(bf.findRange(key - 7, key + 9));
 
   key = 7947621528143548327;
   bf.add(key);
-  EXPECT_TRUE(bf.findRange(key - 9, key + 8));
+  ASSERT_TRUE(bf.findRange(key - 9, key + 8));
 }

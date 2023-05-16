@@ -3,11 +3,13 @@
 #include <_types/_uint32_t.h>
 #include <_types/_uint64_t.h>
 #include <_types/_uint8_t.h>
+#include <algorithm>
 #include <cassert>
 #include <cstddef>
 #include <cstdlib>
 #include <exception>
 #include <iostream>
+#include <iterator>
 #include <limits>
 #include <sstream>
 #include <stdexcept>
@@ -49,9 +51,13 @@ template <typename T, typename UnderType>
 UnderType BloomRF<T, UnderType>::bloomRFRemainder(T data,
                                                   size_t i,
                                                   int wordPos) {
-  UnderType offset = (data >> shifts[i]) & ((1 << (delta[i] - 1)) - 1);
+  UnderType offset =
+      (data >> shifts[i]) & ((UnderType{1} << (delta[i] - 1)) - 1);
   UnderType ret = (UnderType{1} << offset);
+  assert(offset < (1 << (delta[i] - 1)));
+
   ret = ret << (wordPos * (1 << (delta[i] - 1)));
+
   return ret;
 }
 
@@ -96,13 +102,15 @@ template <typename T, typename UnderType>
 bool BloomRF<T, UnderType>::findRange(T lkey, T hkey) {
   Checks checks(lkey, hkey, {});
 
-  checks.initChecks(shifts.back());
+  checks.initChecks(shifts.back(), delta.back());
 
   for (int layer = hashes - 1; layer >= 0; --layer) {
     Checks new_checks(lkey, hkey, {});
+    checks.compressChecks(shifts[layer] + delta[layer] - 1);
+
+    int dyadic_intervals_of_decomposition = 0;
     for (const auto& check : checks.getChecks()) {
       if (check.low < lkey || check.high > hkey) {
-        assert((check.high - check.low + 1 == (T{1} << shifts[layer])));
         size_t pos = bloomRFHashToWord(check.low, layer);
         auto div = getFilterPosAndOffset(pos, layer);
         if (filter[div.quot] & bloomRFRemainder(check.low, layer, div.rem)) {
@@ -119,15 +127,38 @@ bool BloomRF<T, UnderType>::findRange(T lkey, T hkey) {
         UnderType bitmask =
             buildBitMaskForRange(check.low, check.high, layer, div.rem);
         UnderType word = filter[div.quot];
+        ++dyadic_intervals_of_decomposition;
         if ((bitmask & word) != 0) {
           return true;
         }
       }
     }
+    assert(dyadic_intervals_of_decomposition <= 4 || layer == hashes - 1);
+
     checks = std::move(new_checks);
   }
 
   return false;
+}
+
+template <typename T, typename UnderType>
+void BloomRF<T, UnderType>::Checks::compressChecks(size_t total_shift) {
+  std::vector<Check> new_checks;
+  for (const auto& check : checks) {
+    if (check.low < lkey || check.high > hkey) {
+      new_checks.push_back(check);
+    } else if (!new_checks.empty() && check.loc == new_checks.back().loc &&
+               ((new_checks.back().low >> total_shift) ==
+                (check.low >> total_shift)) &&
+               !(new_checks.back().low < lkey ||
+                 new_checks.back().high > hkey)) {
+      assert(new_checks.back().high + 1 == check.low);
+      new_checks.back().high = check.high;
+    } else {
+      new_checks.push_back(check);
+    }
+  }
+  checks = std::move(new_checks);
 }
 
 template <typename T, typename UnderType>
@@ -153,11 +184,11 @@ void BloomRF<T, UnderType>::Checks::advanceChecks(size_t times) {
           new_checks.push_back({mid, check.high, IntervalLocation::Right});
         }
       } else if (check.loc == IntervalLocation::Left) {
-        new_checks.push_back({mid, check.high, IntervalLocation::Left});
         if (mid > lkey) {
           new_checks.push_back(
               {check.low, static_cast<T>(mid - 1), IntervalLocation::Left});
         }
+        new_checks.push_back({mid, check.high, IntervalLocation::Left});
       } else {
         new_checks.push_back(
             {check.low, static_cast<T>(mid - 1), IntervalLocation::Right});
@@ -171,7 +202,8 @@ void BloomRF<T, UnderType>::Checks::advanceChecks(size_t times) {
 }
 
 template <typename T, typename UnderType>
-void BloomRF<T, UnderType>::Checks::initChecks(size_t delta_sum) {
+void BloomRF<T, UnderType>::Checks::initChecks(size_t delta_sum,
+                                               size_t delta_back) {
   T low = 0;
   T high = ~low;
 
@@ -193,11 +225,9 @@ UnderType BloomRF<T, UnderType>::buildBitMaskForRange(T low,
   UnderType highOffset = ((high >> shifts[i]) & ((1 << (delta[i] - 1)) - 1));
   UnderType ret = ~0;
   ret ^= (UnderType{1} << lowOffset) - 1;
-
   if (highOffset < 8 * sizeof(UnderType) - 1) {
     ret &= (UnderType{1} << (highOffset + 1)) - 1;
   }
-
   ret = ret << (wordPos * (1 << (delta[i] - 1)));
   return ret;
 }
