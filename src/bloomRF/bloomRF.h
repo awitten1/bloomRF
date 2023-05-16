@@ -43,10 +43,23 @@ class BloomRF {
   const Container& getFilter() const { return filter; }
   Container& getFilter() { return filter; }
 
+  const std::vector<size_t>& getDelta() { return delta; }
+
  private:
   class Checks {
+
    public:
     enum class IntervalLocation { Left, Right, NotYetSplit };
+
+    static std::string loc_to_string(IntervalLocation loc) {
+      if (loc == IntervalLocation::Left) {
+        return "LEFT";
+      } else if (loc == IntervalLocation::Right) {
+        return "RIGHT";
+      } else {
+        return "NOT_YET_SPLIT";
+      }
+    }
 
     struct Check {
       Check(T low_, T high_, IntervalLocation loc_)
@@ -64,11 +77,13 @@ class BloomRF {
 
     void initChecks(size_t delta_sum, size_t delta_back);
 
-    void advanceChecks(size_t times, T minIntervalSize);
+    void advanceChecks(size_t times);
 
     void concatenateChecks(const Checks& other) {
       checks.insert(checks.end(), other.checks.begin(), other.checks.end());
     }
+
+    void compressChecks(size_t total_shift);
 
    private:
     std::vector<Check> checks;

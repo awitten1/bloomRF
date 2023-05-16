@@ -9,6 +9,7 @@
 #include <cstdlib>
 #include <exception>
 #include <iostream>
+#include <iterator>
 #include <limits>
 #include <sstream>
 #include <stdexcept>
@@ -27,6 +28,20 @@ constexpr uint64_t SEED_GEN_B = 217728422;
 constexpr uint64_t MAX_BLOOM_FILTER_SIZE = 1 << 30;
 
 }  // namespace
+
+template<typename T>
+void printBinary(T t) {
+  std::vector<int> print;
+  auto x = 8 * sizeof(T);
+  while(x--) {
+    print.push_back(t % 2);
+    t >>= 1;
+  }
+  std::reverse(print.begin(), print.end());
+  std::copy(print.begin(), print.end(), std::ostream_iterator<int>(std::cerr));
+  //std::cerr << std::endl;
+}
+
 
 BloomFilterRFParameters::BloomFilterRFParameters(size_t filter_size_,
                                                  size_t seed_,
@@ -50,9 +65,19 @@ template <typename T, typename UnderType>
 UnderType BloomRF<T, UnderType>::bloomRFRemainder(T data,
                                                   size_t i,
                                                   int wordPos) {
-  UnderType offset = (data >> shifts[i]) & ((1 << (delta[i] - 1)) - 1);
+  //std::cout << "asdf" << std::endl;
+  //std::cout << "delta: " << delta[i] << std::endl;
+  UnderType offset = (data >> shifts[i]) & ((UnderType{1} << (delta[i] - 1)) - 1);
+  //printBinary(offset);
+  ////std::cout << offset << std::endl;
   UnderType ret = (UnderType{1} << offset);
+  assert(offset < (1 << (delta[i] - 1)));
+
   ret = ret << (wordPos * (1 << (delta[i] - 1)));
+      //printBinary(ret);
+
+    //std::cout << "asdf" << std::endl;
+
   return ret;
 }
 
@@ -70,6 +95,7 @@ template <typename T, typename UnderType>
 void BloomRF<T, UnderType>::add(T data) {
   for (size_t i = 0; i < hashes; ++i) {
     size_t pos = bloomRFHashToWord(data, i);
+    //std::cerr << pos << std::endl;
     auto div = getFilterPosAndOffset(pos, i);
     filter[div.quot] |= bloomRFRemainder(data, i, div.rem);
   }
@@ -93,57 +119,97 @@ std::ldiv_t BloomRF<T, UnderType>::getFilterPosAndOffset(size_t pos, size_t i) {
   return std::ldiv(pos, wordsPerUnderType);
 }
 
+
 template <typename T, typename UnderType>
 bool BloomRF<T, UnderType>::findRange(T lkey, T hkey) {
   Checks checks(lkey, hkey, {});
 
   checks.initChecks(shifts.back(), delta.back());
+  //std::cout << "\n\n" << lkey << "," << hkey << std::endl;
+  //std::cout << std::endl;
 
   for (int layer = hashes - 1; layer >= 0; --layer) {
     Checks new_checks(lkey, hkey, {});
-    // std::cout << std::endl << "shift: " << shifts[layer] << std::endl;
+    checks.compressChecks(shifts[layer] + delta[layer] - 1);
+
+    //std::cout << "shift: " << shifts[layer] << std::endl;
+    //std::cout << "delta: " << delta[layer] << std::endl;
+    int dyadic_intervals_of_decomposition = 0;
     for (const auto& check : checks.getChecks()) {
-      // std::cout << "[" << check.low << "," << check.high << "]"
-      //           << ", ";
+      //std::cout << "[" << check.low << "," << check.high << "]" << ", " << Checks::loc_to_string(check.loc) << ", ";
       if (check.low < lkey || check.high > hkey) {
         size_t pos = bloomRFHashToWord(check.low, layer);
+        //std::cout << pos << std::endl;
         auto div = getFilterPosAndOffset(pos, layer);
+        //std::cout << "word: ";
+        //printBinary(filter[div.quot]);
+        //std::cout << "remainder: ";
+        //printBinary(bloomRFRemainder(check.low, layer, div.rem));
         if (filter[div.quot] & bloomRFRemainder(check.low, layer, div.rem)) {
           Checks check_for_interval{
               lkey,
               hkey,
               {typename Checks::Check{check.low, check.high, check.loc}}};
-          check_for_interval.advanceChecks(delta[layer - 1],
-                                           1 << (delta[layer - 1] - 1));
+          check_for_interval.advanceChecks(delta[layer - 1]);
           new_checks.concatenateChecks(check_for_interval);
         }
       } else {
         size_t pos = bloomRFHashToWord(check.low, layer);
+        //std::cerr << pos << std::endl;
         auto div = getFilterPosAndOffset(pos, layer);
         UnderType bitmask =
             buildBitMaskForRange(check.low, check.high, layer, div.rem);
         UnderType word = filter[div.quot];
+        //printBinary(bitmask);
+        //printBinary(word);
+        ++dyadic_intervals_of_decomposition;
         if ((bitmask & word) != 0) {
           return true;
         }
       }
     }
+    //std::cout << std::endl;
+
+    if (dyadic_intervals_of_decomposition > 4) {
+      std::cout << lkey << "," << hkey << std::endl;
+      std::cout << layer << std::endl;
+      std::copy(delta.begin(), delta.end(), std::ostream_iterator<size_t>(std::cout, ","));
+      std::cout << std::endl;
+      for (auto&& check : checks.getChecks()) {
+        std::cerr << "[" << check.low << "," << check.high << "]" << "," << Checks::loc_to_string(check.loc) << ", ";
+      }
+    }
+    assert(dyadic_intervals_of_decomposition <= 4 || layer == hashes - 1);
+
     checks = std::move(new_checks);
   }
 
   return false;
 }
 
+template<typename T, typename UnderType>
+void BloomRF<T, UnderType>::Checks::compressChecks(size_t total_shift) {
+  std::vector<Check> new_checks;
+  for (const auto& check : checks) {
+    if (check.low < lkey || check.high > hkey) {
+      new_checks.push_back(check);
+    } else if (!new_checks.empty() && check.loc == new_checks.back().loc && ((new_checks.back().low >> total_shift) == (check.low >> total_shift))
+            && !(new_checks.back().low < lkey || new_checks.back().high > hkey)) {
+      assert(new_checks.back().high + 1 == check.low);
+      new_checks.back().high = check.high;
+    } else {
+      new_checks.push_back(check);
+    }
+  }
+  checks = std::move(new_checks);
+}
+
 template <typename T, typename UnderType>
-void BloomRF<T, UnderType>::Checks::advanceChecks(size_t times,
-                                                  T minIntervalSize) {
+void BloomRF<T, UnderType>::Checks::advanceChecks(size_t times) {
   for (int i = 0; i < times; ++i) {
     std::vector<Check> new_checks;
     for (const auto& check : checks) {
       T mid = check.high - ((check.high - check.low) >> 1);
-
-      if ((check.low < lkey || check.high > hkey) ||
-          (check.high - check.low) > minIntervalSize) {
         if (check.loc == IntervalLocation::NotYetSplit) {
           /// If the interval has not yet split, then there must be only one
           /// check.
@@ -161,11 +227,11 @@ void BloomRF<T, UnderType>::Checks::advanceChecks(size_t times,
             new_checks.push_back({mid, check.high, IntervalLocation::Right});
           }
         } else if (check.loc == IntervalLocation::Left) {
-          new_checks.push_back({mid, check.high, IntervalLocation::Left});
           if (mid > lkey) {
             new_checks.push_back(
                 {check.low, static_cast<T>(mid - 1), IntervalLocation::Left});
           }
+          new_checks.push_back({mid, check.high, IntervalLocation::Left});
         } else {
           new_checks.push_back(
               {check.low, static_cast<T>(mid - 1), IntervalLocation::Right});
@@ -173,9 +239,6 @@ void BloomRF<T, UnderType>::Checks::advanceChecks(size_t times,
             new_checks.push_back({mid, check.high, IntervalLocation::Right});
           }
         }
-      } else {
-        new_checks.push_back(check);
-      }
     }
     checks = std::move(new_checks);
   }
@@ -193,7 +256,7 @@ void BloomRF<T, UnderType>::Checks::initChecks(size_t delta_sum,
   }
 
   checks.push_back({low, high, IntervalLocation::NotYetSplit});
-  advanceChecks(domain_width - delta_sum, 1 << (delta_back - 1));
+  advanceChecks(domain_width - delta_sum);
 }
 
 template <typename T, typename UnderType>
@@ -203,14 +266,18 @@ UnderType BloomRF<T, UnderType>::buildBitMaskForRange(T low,
                                                       int wordPos) {
   UnderType lowOffset = ((low >> shifts[i]) & ((1 << (delta[i] - 1)) - 1));
   UnderType highOffset = ((high >> shifts[i]) & ((1 << (delta[i] - 1)) - 1));
+  //////std::cerr << "lowOffset: " << lowOffset << std::endl;
   UnderType ret = ~0;
+  //printBinary(ret);
   ret ^= (UnderType{1} << lowOffset) - 1;
-
+  //printBinary(ret);
   if (highOffset < 8 * sizeof(UnderType) - 1) {
     ret &= (UnderType{1} << (highOffset + 1)) - 1;
   }
-
+  //printBinary(ret);
   ret = ret << (wordPos * (1 << (delta[i] - 1)));
+  //printBinary(ret);
+  ////std::cerr << "built ret" << std::endl;
   return ret;
 }
 
