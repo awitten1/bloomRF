@@ -44,7 +44,6 @@ class BloomFilterUniform32Test : public ::testing::Test {
       BloomFilterRFParameters{16000, 0, {6, 6, 6, 6, 6, 6}}};
 };
 
-
 class BloomFilterUniform128Test : public ::testing::Test,
                                   public testing::WithParamInterface<
                                       std::pair<int, BloomFilterRFParameters>> {
@@ -150,14 +149,15 @@ INSTANTIATE_TEST_SUITE_P(
     }()));
 
 TEST(OneOff, RangeQuery) {
-  BloomRF<uint64_t, filters::uint128_t> bf{BloomFilterRFParameters{16000, 0, {5,8,6}}};
+  BloomRF<uint64_t, filters::uint128_t> bf{
+      BloomFilterRFParameters{16000, 0, {5, 8, 6}}};
   uint64_t key = 17183560791176864955ULL;
   bf.add(key);
   ASSERT_TRUE(bf.findRange(key - 100, key + 100));
 
   key = 13539885930325430328ULL;
   bf.add(key);
-  ASSERT_TRUE(bf.findRange(key-9, key+9));
+  ASSERT_TRUE(bf.findRange(key - 9, key + 9));
 
   key = 13482642926757329959ULL;
   bf.add(key);
@@ -165,11 +165,11 @@ TEST(OneOff, RangeQuery) {
 
   key = 4944684668419138897ULL;
   bf.add(key);
-  ASSERT_TRUE(bf.findRange(key-5, key+8));
+  ASSERT_TRUE(bf.findRange(key - 5, key + 8));
 
   key = 12836727673998169215ULL;
   bf.add(key);
-  ASSERT_TRUE(bf.findRange(key-4, key+2));
+  ASSERT_TRUE(bf.findRange(key - 4, key + 2));
 
   key = 6734315744289451875ULL;
   bf.add(key);

@@ -47,7 +47,6 @@ class BloomRF {
 
  private:
   class Checks {
-
    public:
     enum class IntervalLocation { Left, Right, NotYetSplit };
 
