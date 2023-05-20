@@ -1,5 +1,4 @@
 #include <gtest/gtest.h>
-#include <_types/_uint64_t.h>
 #include <algorithm>
 #include <cstddef>
 #include <cstdlib>
