@@ -266,6 +266,7 @@ template class BloomRF<uint64_t>;
 template class BloomRF<uint64_t, uint32_t>;
 
 static_assert(sizeof(uint64_t) == sizeof(std::atomic<uint64_t>));
+static_assert(std::atomic<uint64_t>::is_always_lock_free);
 template class BloomRF<uint64_t, std::atomic<uint64_t>>;
 
 
