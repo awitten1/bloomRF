@@ -84,7 +84,8 @@ class BloomRF {
   };
 
   static auto copyUnderType(const UnderType& v) {
-    if constexpr(std::is_same_v<UnderType, std::atomic<uint128_t>>) {
+    if constexpr(std::disjunction_v<std::is_same<UnderType, std::atomic<uint128_t>>,
+            std::is_same<UnderType, std::atomic<uint64_t>>>) {
       return v.load();
     } else {
       return v;

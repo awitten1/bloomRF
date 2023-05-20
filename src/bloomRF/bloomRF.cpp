@@ -1,4 +1,5 @@
 #include "bloomRF.h"
+#include <_types/_uint64_t.h>
 #include <algorithm>
 #include <cassert>
 #include <cstddef>
@@ -9,6 +10,7 @@
 #include <limits>
 #include <sstream>
 #include <stdexcept>
+#include <sys/types.h>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -264,9 +266,13 @@ template class BloomRF<uint32_t>;
 template class BloomRF<uint64_t>;
 template class BloomRF<uint64_t, uint32_t>;
 
+static_assert(sizeof(uint64_t) == sizeof(std::atomic<uint64_t>));
+template class BloomRF<uint64_t, std::atomic<uint64_t>>;
+
+
 #ifdef __SIZEOF_INT128__
 template class BloomRF<uint64_t, uint128_t>;
-template class BloomRF<uint64_t, std::atomic<uint128_t>>;
+//template class BloomRF<uint64_t, std::atomic<uint128_t>>;
 static_assert(sizeof(uint128_t) == sizeof(std::atomic<uint128_t>));
 #endif
 

@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+#include <_types/_uint64_t.h>
 #include <algorithm>
 #include <cstddef>
 #include <cstdlib>
@@ -121,11 +122,11 @@ TEST_P(BloomFilterUniform128Test, NoFalseNegativesRangeQueryExtraLargeRange) {
   }
 }
 
-BloomFilterRFParameters genParams() {
+BloomFilterRFParameters genParams(int maxDelta) {
   std::random_device rd;
   std::mt19937_64 e2(rd());
 
-  std::uniform_int_distribution<uint64_t> layer(2, 8);
+  std::uniform_int_distribution<uint64_t> layer(2, maxDelta);
 
   std::vector<size_t> layers((rand() % 8) + 2);
   std::generate(layers.begin(), layers.end(), [&]() { return layer(rd); });
@@ -140,7 +141,7 @@ INSTANTIATE_TEST_SUITE_P(
     testing::ValuesIn([]() {
       std::vector<std::pair<int, BloomFilterRFParameters>> ret;
       std::generate_n(std::back_inserter(ret), 15, []() {
-        return std::pair<int, BloomFilterRFParameters>{10000, genParams()};
+        return std::pair<int, BloomFilterRFParameters>{10000, genParams(8)};
       });
       return ret;
     }()));
@@ -197,7 +198,7 @@ TEST(OneOff, RangeQuery) {
   ASSERT_TRUE(bf.findRange(key - 9, key + 8));
 }
 
-class BloomFilterUniformThreadSafe128Test : public ::testing::Test,
+class BloomFilterUniformThreadSafe64Test : public ::testing::Test,
                                   public testing::WithParamInterface<
                                       std::pair<int, BloomFilterRFParameters>> {
  protected:
@@ -211,16 +212,16 @@ class BloomFilterUniformThreadSafe128Test : public ::testing::Test,
   // Keep track of what has actually been inserted.
   std::vector<uint64_t> s;
 
-  BloomRF<uint64_t, std::atomic<filters::uint128_t>> bf{GetParam().second};
+  BloomRF<uint64_t, std::atomic<uint64_t>> bf{GetParam().second};
 };
 
-TEST_P(BloomFilterUniformThreadSafe128Test, NoFalseNegativesPointQuery) {
+TEST_P(BloomFilterUniformThreadSafe64Test, NoFalseNegativesPointQuery) {
   for (auto it = s.cbegin(); it != s.cend(); ++it) {
     ASSERT_TRUE(bf.find(*it));
   }
 }
 
-TEST_P(BloomFilterUniformThreadSafe128Test, NoFalseNegativesRangeQuerySmallRange) {
+TEST_P(BloomFilterUniformThreadSafe64Test, NoFalseNegativesRangeQuerySmallRange) {
   for (auto it = s.cbegin(); it != s.cend(); ++it) {
     auto low = *it - rand() % 10;
     auto high = *it + rand() % 10;
@@ -239,7 +240,7 @@ TEST_P(BloomFilterUniformThreadSafe128Test, NoFalseNegativesRangeQuerySmallRange
   }
 }
 
-TEST_P(BloomFilterUniformThreadSafe128Test, NoFalseNegativesRangeQueryLargeRange) {
+TEST_P(BloomFilterUniformThreadSafe64Test, NoFalseNegativesRangeQueryLargeRange) {
   for (auto it = s.cbegin(); it != s.cend(); ++it) {
     auto low = *it - rand() % 10000;
     auto high = *it + rand() % 10000;
@@ -258,7 +259,7 @@ TEST_P(BloomFilterUniformThreadSafe128Test, NoFalseNegativesRangeQueryLargeRange
   }
 }
 
-TEST_P(BloomFilterUniformThreadSafe128Test, NoFalseNegativesRangeQueryExtraLargeRange) {
+TEST_P(BloomFilterUniformThreadSafe64Test, NoFalseNegativesRangeQueryExtraLargeRange) {
   for (auto it = s.cbegin(); it != s.cend(); ++it) {
     auto low = *it - rand() % 100000;
     auto high = *it + rand() % 100000;
@@ -281,11 +282,11 @@ GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(BloomFilterUniformThreadSafe128Tes
 
 INSTANTIATE_TEST_SUITE_P(
     NoFalseNegatives,
-    BloomFilterUniformThreadSafe128Test,
+    BloomFilterUniformThreadSafe64Test,
     testing::ValuesIn([]() {
       std::vector<std::pair<int, BloomFilterRFParameters>> ret;
       std::generate_n(std::back_inserter(ret), 15, []() {
-        return std::pair<int, BloomFilterRFParameters>{10000, genParams()};
+        return std::pair<int, BloomFilterRFParameters>{10000, genParams(7)};
       });
       return ret;
     }()));
