@@ -38,7 +38,7 @@ BloomRF<T, UnderType>::BloomRF(const BloomFilterRFParameters& params)
     : BloomRF<T, UnderType>(params.filter_size, params.seed, params.delta) {}
 
 template <typename T, typename UnderType>
-size_t BloomRF<T, UnderType>::bloomRFHashToWord(T data, size_t i) {
+size_t BloomRF<T, UnderType>::bloomRFHashToWord(T data, size_t i) const {
   auto hash = this->hash(data >> (shifts[i] + delta[i] - 1), i);
   return hash % (numBits() >> (delta[i] - 1));
 }
@@ -46,7 +46,7 @@ size_t BloomRF<T, UnderType>::bloomRFHashToWord(T data, size_t i) {
 template <typename T, typename UnderType>
 UnderType BloomRF<T, UnderType>::bloomRFRemainder(T data,
                                                   size_t i,
-                                                  int wordPos) {
+                                                  int wordPos) const {
   UnderType offset =
       (data >> shifts[i]) & ((UnderType{1} << (delta[i] - 1)) - 1);
   UnderType ret = (UnderType{1} << offset);
@@ -54,11 +54,11 @@ UnderType BloomRF<T, UnderType>::bloomRFRemainder(T data,
 
   ret = ret << (wordPos * (1 << (delta[i] - 1)));
 
-  return ret;
+  return copyUnderType(ret);
 }
 
 template <typename T, typename UnderType>
-size_t BloomRF<T, UnderType>::hash(T data, size_t i) {
+size_t BloomRF<T, UnderType>::hash(T data, size_t i) const {
   size_t hash1 = CityHash64WithSeed(reinterpret_cast<const char*>(&data),
                                     sizeof(data), seed);
   size_t hash2 =
@@ -77,7 +77,7 @@ void BloomRF<T, UnderType>::add(T data) {
 }
 
 template <typename T, typename UnderType>
-bool BloomRF<T, UnderType>::find(T data) {
+bool BloomRF<T, UnderType>::find(T data) const {
   for (size_t i = 0; i < hashes; ++i) {
     size_t pos = bloomRFHashToWord(data, i);
     auto div = getFilterPosAndOffset(pos, i);
@@ -89,13 +89,13 @@ bool BloomRF<T, UnderType>::find(T data) {
 }
 
 template <typename T, typename UnderType>
-std::ldiv_t BloomRF<T, UnderType>::getFilterPosAndOffset(size_t pos, size_t i) {
+std::ldiv_t BloomRF<T, UnderType>::getFilterPosAndOffset(size_t pos, size_t i) const {
   size_t wordsPerUnderType = 8 * sizeof(UnderType) / (1 << (delta[i] - 1));
   return std::ldiv(pos, wordsPerUnderType);
 }
 
 template <typename T, typename UnderType>
-bool BloomRF<T, UnderType>::findRange(T lkey, T hkey) {
+bool BloomRF<T, UnderType>::findRange(T lkey, T hkey) const {
   Checks checks(lkey, hkey, {});
 
   checks.initChecks(shifts.back(), delta.back());
@@ -122,7 +122,7 @@ bool BloomRF<T, UnderType>::findRange(T lkey, T hkey) {
         auto div = getFilterPosAndOffset(pos, layer);
         UnderType bitmask =
             buildBitMaskForRange(check.low, check.high, layer, div.rem);
-        UnderType word = filter[div.quot];
+        UnderType word = copyUnderType(filter[div.quot]);
         ++dyadic_intervals_of_decomposition;
         if ((bitmask & word) != 0) {
           return true;
@@ -216,7 +216,7 @@ template <typename T, typename UnderType>
 UnderType BloomRF<T, UnderType>::buildBitMaskForRange(T low,
                                                       T high,
                                                       size_t i,
-                                                      int wordPos) {
+                                                      int wordPos) const {
   UnderType lowOffset = ((low >> shifts[i]) & ((1 << (delta[i] - 1)) - 1));
   UnderType highOffset = ((high >> shifts[i]) & ((1 << (delta[i] - 1)) - 1));
   UnderType ret = ~0;
@@ -225,7 +225,7 @@ UnderType BloomRF<T, UnderType>::buildBitMaskForRange(T low,
     ret &= (UnderType{1} << (highOffset + 1)) - 1;
   }
   ret = ret << (wordPos * (1 << (delta[i] - 1)));
-  return ret;
+  return copyUnderType(ret);
 }
 
 template <typename T, typename UnderType>
@@ -235,7 +235,7 @@ BloomRF<T, UnderType>::BloomRF(size_t size_,
     : hashes(delta_.size()),
       seed(seed_),
       words((size_ + sizeof(UnderType) - 1) / sizeof(UnderType)),
-      filter(words, 0),
+      filter(new UnderType[words]{}),
       delta(delta_),
       shifts(delta.size()) {
   if (delta.empty()) {
@@ -266,6 +266,8 @@ template class BloomRF<uint64_t, uint32_t>;
 
 #ifdef __SIZEOF_INT128__
 template class BloomRF<uint64_t, uint128_t>;
+template class BloomRF<uint64_t, std::atomic<uint128_t>>;
+static_assert(sizeof(uint128_t) == sizeof(std::atomic<uint128_t>));
 #endif
 
 }  // namespace filters

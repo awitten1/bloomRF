@@ -196,3 +196,96 @@ TEST(OneOff, RangeQuery) {
   bf.add(key);
   ASSERT_TRUE(bf.findRange(key - 9, key + 8));
 }
+
+class BloomFilterUniformThreadSafe128Test : public ::testing::Test,
+                                  public testing::WithParamInterface<
+                                      std::pair<int, BloomFilterRFParameters>> {
+ protected:
+  void SetUp() override {
+    for (int i = 0; i < GetParam().first; ++i) {
+      auto x = randomUniformUint64();
+      s.push_back(x);
+      bf.add(x);
+    }
+  }
+  // Keep track of what has actually been inserted.
+  std::vector<uint64_t> s;
+
+  BloomRF<uint64_t, std::atomic<filters::uint128_t>> bf{GetParam().second};
+};
+
+TEST_P(BloomFilterUniformThreadSafe128Test, NoFalseNegativesPointQuery) {
+  for (auto it = s.cbegin(); it != s.cend(); ++it) {
+    ASSERT_TRUE(bf.find(*it));
+  }
+}
+
+TEST_P(BloomFilterUniformThreadSafe128Test, NoFalseNegativesRangeQuerySmallRange) {
+  for (auto it = s.cbegin(); it != s.cend(); ++it) {
+    auto low = *it - rand() % 10;
+    auto high = *it + rand() % 10;
+    bool found = bf.findRange(low, high);
+    if (!found) {
+      std::ostringstream os;
+      os << "Failed lookup. Query range: [" << low << "," << high << "]. ";
+      os << "Have key: " << *it << std::endl;
+      os << "Delta vector: ";
+      for (auto&& v : bf.getDelta()) {
+        os << v << " ";
+      }
+      std::cerr << os.str();
+    }
+    ASSERT_TRUE(found);
+  }
+}
+
+TEST_P(BloomFilterUniformThreadSafe128Test, NoFalseNegativesRangeQueryLargeRange) {
+  for (auto it = s.cbegin(); it != s.cend(); ++it) {
+    auto low = *it - rand() % 10000;
+    auto high = *it + rand() % 10000;
+    bool found = bf.findRange(low, high);
+    if (!found) {
+      std::ostringstream os;
+      os << "Failed lookup. Query range: [" << low << "," << high << "]. ";
+      os << "Have key: " << *it << std::endl;
+      os << "Delta vector: ";
+      for (auto&& v : bf.getDelta()) {
+        os << v << " ";
+      }
+      std::cerr << os.str();
+    }
+    ASSERT_TRUE(found);
+  }
+}
+
+TEST_P(BloomFilterUniformThreadSafe128Test, NoFalseNegativesRangeQueryExtraLargeRange) {
+  for (auto it = s.cbegin(); it != s.cend(); ++it) {
+    auto low = *it - rand() % 100000;
+    auto high = *it + rand() % 100000;
+    bool found = bf.findRange(low, high);
+    if (!found) {
+      std::ostringstream os;
+      os << "Failed lookup. Query range: [" << low << "," << high << "]. ";
+      os << "Have key: " << *it << std::endl;
+      os << "Delta vector: ";
+      for (auto&& v : bf.getDelta()) {
+        os << v << " ";
+      }
+      std::cerr << os.str();
+    }
+    ASSERT_TRUE(found);
+  }
+}
+
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(BloomFilterUniformThreadSafe128Test);
+
+INSTANTIATE_TEST_SUITE_P(
+    NoFalseNegatives,
+    BloomFilterUniformThreadSafe128Test,
+    testing::ValuesIn([]() {
+      std::vector<std::pair<int, BloomFilterRFParameters>> ret;
+      std::generate_n(std::back_inserter(ret), 15, []() {
+        return std::pair<int, BloomFilterRFParameters>{10000, genParams()};
+      });
+      return ret;
+    }()));

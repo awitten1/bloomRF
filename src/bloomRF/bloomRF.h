@@ -1,6 +1,8 @@
+#include <atomic>
 #include <cstddef>
 #include <iostream>
 #include <limits>
+#include <memory>
 #include <type_traits>
 #include <vector>
 
@@ -28,15 +30,15 @@ using uint128_t = __uint128_t;
 template <typename T, typename UnderType = uint64_t>
 class BloomRF {
  public:
-  using Container = std::vector<UnderType>;
+  using Container = std::unique_ptr<UnderType[]>;
 
   explicit BloomRF(const BloomFilterRFParameters& params);
 
   void add(T data);
 
-  bool find(T data);
+  bool find(T data) const;
 
-  bool findRange(T low, T high);
+  bool findRange(T low, T high) const;
 
   const Container& getFilter() const { return filter; }
   Container& getFilter() { return filter; }
@@ -81,23 +83,31 @@ class BloomRF {
     friend class BloomRF;
   };
 
-  UnderType buildBitMaskForRange(T low, T high, size_t i, int wordPos);
+  static UnderType copyUnderType(const UnderType& v) {
+    if constexpr(std::is_same_v<UnderType, std::atomic<uint128_t>>) {
+      return v.load();
+    } else {
+      return v;
+    }
+  }
+
+  UnderType buildBitMaskForRange(T low, T high, size_t i, int wordPos) const;
 
   explicit BloomRF(size_t size_, size_t seed_, std::vector<size_t> delta);
 
   /// Returns size in bits.
-  size_t numBits() { return 8 * sizeof(UnderType) * filter.size(); }
+  size_t numBits() const { return 8 * sizeof(UnderType) * words; }
 
   /// Computes the ith PMHF hash of data. Only returns the word
   /// to which the data maps to.  Use bloomRFRemainder to retrieve the
   /// offset.
-  size_t bloomRFHashToWord(T data, size_t i);
+  size_t bloomRFHashToWord(T data, size_t i) const;
 
-  UnderType bloomRFRemainder(T data, size_t i, int wordPos);
+  UnderType bloomRFRemainder(T data, size_t i, int wordPos) const;
 
-  std::ldiv_t getFilterPosAndOffset(size_t pos, size_t i);
+  std::ldiv_t getFilterPosAndOffset(size_t pos, size_t i) const;
 
-  size_t hash(T data, size_t i);
+  size_t hash(T data, size_t i) const;
 
   /// Number of hash functions.
   size_t hashes;
