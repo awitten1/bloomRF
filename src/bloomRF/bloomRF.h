@@ -43,7 +43,7 @@ class BloomRF {
   const Container& getFilter() const { return filter; }
   Container& getFilter() { return filter; }
 
-  const std::vector<size_t>& getDelta() { return delta; }
+  const std::vector<size_t>& getDelta() const { return delta; }
 
  private:
   class Checks {
@@ -83,7 +83,7 @@ class BloomRF {
     friend class BloomRF;
   };
 
-  static UnderType copyUnderType(const UnderType& v) {
+  static auto copyUnderType(const UnderType& v) {
     if constexpr(std::is_same_v<UnderType, std::atomic<uint128_t>>) {
       return v.load();
     } else {
