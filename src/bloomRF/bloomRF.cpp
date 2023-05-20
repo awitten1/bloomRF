@@ -1,8 +1,4 @@
 #include "bloomRF.h"
-#include <_types/_uint16_t.h>
-#include <_types/_uint32_t.h>
-#include <_types/_uint64_t.h>
-#include <_types/_uint8_t.h>
 #include <algorithm>
 #include <cassert>
 #include <cstddef>

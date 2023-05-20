@@ -1,5 +1,3 @@
-#include <_types/_uint16_t.h>
-#include <_types/_uint64_t.h>
 #include <cstddef>
 #include <iostream>
 #include <limits>
@@ -49,16 +47,6 @@ class BloomRF {
   class Checks {
    public:
     enum class IntervalLocation { Left, Right, NotYetSplit };
-
-    static std::string loc_to_string(IntervalLocation loc) {
-      if (loc == IntervalLocation::Left) {
-        return "LEFT";
-      } else if (loc == IntervalLocation::Right) {
-        return "RIGHT";
-      } else {
-        return "NOT_YET_SPLIT";
-      }
-    }
 
     struct Check {
       Check(T low_, T high_, IntervalLocation loc_)
