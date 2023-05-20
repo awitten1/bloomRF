@@ -44,7 +44,7 @@ size_t BloomRF<T, UnderType>::bloomRFHashToWord(T data, size_t i) const {
 }
 
 template <typename T, typename UnderType>
-UnderType BloomRF<T, UnderType>::bloomRFRemainder(T data,
+auto BloomRF<T, UnderType>::bloomRFRemainder(T data,
                                                   size_t i,
                                                   int wordPos) const {
   UnderType offset =
@@ -213,7 +213,7 @@ void BloomRF<T, UnderType>::Checks::initChecks(size_t delta_sum,
 }
 
 template <typename T, typename UnderType>
-UnderType BloomRF<T, UnderType>::buildBitMaskForRange(T low,
+auto BloomRF<T, UnderType>::buildBitMaskForRange(T low,
                                                       T high,
                                                       size_t i,
                                                       int wordPos) const {

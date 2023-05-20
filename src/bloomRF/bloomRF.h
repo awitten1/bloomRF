@@ -91,7 +91,7 @@ class BloomRF {
     }
   }
 
-  UnderType buildBitMaskForRange(T low, T high, size_t i, int wordPos) const;
+  auto buildBitMaskForRange(T low, T high, size_t i, int wordPos) const;
 
   explicit BloomRF(size_t size_, size_t seed_, std::vector<size_t> delta);
 
@@ -103,7 +103,7 @@ class BloomRF {
   /// offset.
   size_t bloomRFHashToWord(T data, size_t i) const;
 
-  UnderType bloomRFRemainder(T data, size_t i, int wordPos) const;
+  auto bloomRFRemainder(T data, size_t i, int wordPos) const;
 
   std::ldiv_t getFilterPosAndOffset(size_t pos, size_t i) const;
 
