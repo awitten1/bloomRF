@@ -165,6 +165,7 @@ bool BloomRF<T, UnderType>::checkDIOfDecomposition(T low, T high, int layer) con
         bitmask ^= (UnderType{1} << (lowOffset % (8 * sizeof(UnderType)))) - 1;
       }
       if (i == iters - 1) {
+        std::cerr << highOffset << std::endl;
         bitmask &= (UnderType{1} << ((highOffset % (8 * sizeof(UnderType))) + 1)) - 1;
       }
       std::cout << i << std::endl;
@@ -342,7 +343,7 @@ template class BloomRF<uint64_t>;
 template class BloomRF<uint64_t, uint32_t>;
 
 #ifdef __SIZEOF_INT128__
-template class BloomRF<uint64_t, uint128_t>;
+//template class BloomRF<uint64_t, uint128_t>;
 #endif
 
 }  // namespace filters
