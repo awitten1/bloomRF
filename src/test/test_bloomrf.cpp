@@ -7,6 +7,7 @@
 #include <iomanip>
 #include <iterator>
 #include <limits>
+#include <numeric>
 #include <ostream>
 #include <random>
 #include <unordered_set>
@@ -25,20 +26,21 @@ uint64_t randomUniformUint64() {
   return dist(rd);
 }
 
-class BloomFilterUniform32Test : public ::testing::Test {
+class BloomFilterUniform32Test : public ::testing::Test,
+                                  public testing::WithParamInterface<
+                                      std::pair<int, BloomFilterRFParameters>> {
  protected:
   void SetUp() override {
-    for (int i = 0; i < 10000; ++i) {
+    for (int i = 0; i < GetParam().first; ++i) {
       auto x = randomUniformUint64();
-      s.insert(x);
+      s.push_back(x);
       bf.add(x);
     }
   }
   // Keep track of what has actually been inserted.
-  std::unordered_set<uint64_t> s;
+  std::vector<uint64_t> s;
 
-  BloomRF<uint64_t, uint32_t> bf{
-      BloomFilterRFParameters{16000, 0, {6, 6, 6, 6, 6, 6}}};
+  BloomRF<uint64_t, uint32_t> bf{GetParam().second};
 };
 
 class BloomFilterUniform128Test : public ::testing::Test,
@@ -57,6 +59,19 @@ class BloomFilterUniform128Test : public ::testing::Test,
 
   BloomRF<uint64_t, filters::uint128_t> bf{GetParam().second};
 };
+
+BloomFilterRFParameters genParams(size_t filterSizeBytes, int maxDelta, size_t maxDeltaSum) {
+  std::random_device rd;
+  std::mt19937_64 e2(rd());
+  std::uniform_int_distribution<uint64_t> layer(2, maxDelta);
+
+  std::vector<size_t> layers((rand() % 8) + 2);
+  std::generate(layers.begin(), layers.end(), [&]() { return layer(rd); });
+  while (std::accumulate(layers.begin(), layers.end(), 0) > maxDeltaSum) {
+    std::generate(layers.begin(), layers.end(), [&]() { return layer(rd); });
+  }
+  return BloomFilterRFParameters{filterSizeBytes, 0, layers};
+}
 
 TEST_P(BloomFilterUniform128Test, NoFalseNegativesPointQuery) {
   for (auto it = s.cbegin(); it != s.cend(); ++it) {
@@ -121,17 +136,6 @@ TEST_P(BloomFilterUniform128Test, NoFalseNegativesRangeQueryExtraLargeRange) {
   }
 }
 
-BloomFilterRFParameters genParams() {
-  std::random_device rd;
-  std::mt19937_64 e2(rd());
-
-  std::uniform_int_distribution<uint64_t> layer(2, 8);
-
-  std::vector<size_t> layers((rand() % 8) + 2);
-  std::generate(layers.begin(), layers.end(), [&]() { return layer(rd); });
-  return BloomFilterRFParameters{16000, 0, layers};
-}
-
 GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(BloomFilterUniform128Test);
 
 INSTANTIATE_TEST_SUITE_P(
@@ -140,14 +144,15 @@ INSTANTIATE_TEST_SUITE_P(
     testing::ValuesIn([]() {
       std::vector<std::pair<int, BloomFilterRFParameters>> ret;
       std::generate_n(std::back_inserter(ret), 15, []() {
-        return std::pair<int, BloomFilterRFParameters>{10000, genParams()};
+        size_t numKeys = 10000;
+        return std::pair<int, BloomFilterRFParameters>{numKeys, genParams((rand() % numKeys) + numKeys, 9, 64)};
       });
       return ret;
     }()));
 
 TEST(OneOff, RangeQuery) {
-  BloomRF<uint64_t, filters::uint128_t> bf{
-      BloomFilterRFParameters{16000, 0, {5, 8, 6}}};
+  BloomRF<uint64_t, uint64_t> bf{
+      BloomFilterRFParameters{16000, 0, {9, 8, 6}}};
   uint64_t key = 17183560791176864955ULL;
   bf.add(key);
   ASSERT_TRUE(bf.findRange(key - 100, key + 100));
@@ -196,3 +201,80 @@ TEST(OneOff, RangeQuery) {
   bf.add(key);
   ASSERT_TRUE(bf.findRange(key - 9, key + 8));
 }
+
+TEST_P(BloomFilterUniform32Test, NoFalseNegativesPointQuery) {
+  for (auto it = s.cbegin(); it != s.cend(); ++it) {
+    ASSERT_TRUE(bf.find(*it));
+  }
+}
+
+TEST_P(BloomFilterUniform32Test, NoFalseNegativesRangeQuerySmallRange) {
+  for (auto it = s.cbegin(); it != s.cend(); ++it) {
+    auto low = *it - rand() % 10;
+    auto high = *it + rand() % 10;
+    bool found = bf.findRange(low, high);
+    if (!found) {
+      std::ostringstream os;
+      os << "Failed lookup. Query range: [" << low << "," << high << "]. ";
+      os << "Have key: " << *it << std::endl;
+      os << "Delta vector: ";
+      for (auto&& v : bf.getDelta()) {
+        os << v << " ";
+      }
+      std::cerr << os.str();
+    }
+    ASSERT_TRUE(found);
+  }
+}
+
+TEST_P(BloomFilterUniform32Test, NoFalseNegativesRangeQueryLargeRange) {
+  for (auto it = s.cbegin(); it != s.cend(); ++it) {
+    auto low = *it - rand() % 10000;
+    auto high = *it + rand() % 10000;
+    bool found = bf.findRange(low, high);
+    if (!found) {
+      std::ostringstream os;
+      os << "Failed lookup. Query range: [" << low << "," << high << "]. ";
+      os << "Have key: " << *it << std::endl;
+      os << "Delta vector: ";
+      for (auto&& v : bf.getDelta()) {
+        os << v << " ";
+      }
+      std::cerr << os.str();
+    }
+    ASSERT_TRUE(found);
+  }
+}
+
+TEST_P(BloomFilterUniform32Test, NoFalseNegativesRangeQueryExtraLargeRange) {
+  for (auto it = s.cbegin(); it != s.cend(); ++it) {
+    auto low = *it - rand() % 100000;
+    auto high = *it + rand() % 100000;
+    bool found = bf.findRange(low, high);
+    if (!found) {
+      std::ostringstream os;
+      os << "Failed lookup. Query range: [" << low << "," << high << "]. ";
+      os << "Have key: " << *it << std::endl;
+      os << "Delta vector: ";
+      for (auto&& v : bf.getDelta()) {
+        os << v << " ";
+      }
+      std::cerr << os.str();
+    }
+    ASSERT_TRUE(found);
+  }
+}
+
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(BloomFilterUniform32Test);
+
+INSTANTIATE_TEST_SUITE_P(
+    NoFalseNegatives,
+    BloomFilterUniform32Test,
+    testing::ValuesIn([]() {
+      std::vector<std::pair<int, BloomFilterRFParameters>> ret;
+      std::generate_n(std::back_inserter(ret), 15, []() {
+        size_t numKeys = 10000;
+        return std::pair<int, BloomFilterRFParameters>{numKeys, genParams((rand() % numKeys) + numKeys, 9, 64)};
+      });
+      return ret;
+    }()));
