@@ -164,7 +164,7 @@ bool BloomRF<T, UnderType>::checkDIOfDecomposition(T low, T high, int layer) con
       if (i == 0) {
         bitmask ^= (UnderType{1} << (lowOffset % (8 * sizeof(UnderType)))) - 1;
       }
-      if (i == iters - 1) {
+      if (i == iters - 1 && (highOffset % (8 * sizeof(UnderType))) < (8 * sizeof(UnderType) - 1)) {
         std::cerr << highOffset << std::endl;
         bitmask &= (UnderType{1} << ((highOffset % (8 * sizeof(UnderType))) + 1)) - 1;
       }
