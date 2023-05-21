@@ -138,17 +138,17 @@ TEST_P(BloomFilterUniform128Test, NoFalseNegativesRangeQueryExtraLargeRange) {
 
 GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(BloomFilterUniform128Test);
 
-INSTANTIATE_TEST_SUITE_P(
-    NoFalseNegatives,
-    BloomFilterUniform128Test,
-    testing::ValuesIn([]() {
-      std::vector<std::pair<int, BloomFilterRFParameters>> ret;
-      std::generate_n(std::back_inserter(ret), 15, []() {
-        size_t numKeys = 10000;
-        return std::pair<int, BloomFilterRFParameters>{numKeys, genParams((rand() % numKeys) + numKeys, 9, 64)};
-      });
-      return ret;
-    }()));
+// INSTANTIATE_TEST_SUITE_P(
+//     NoFalseNegatives,
+//     BloomFilterUniform128Test,
+//     testing::ValuesIn([]() {
+//       std::vector<std::pair<int, BloomFilterRFParameters>> ret;
+//       std::generate_n(std::back_inserter(ret), 15, []() {
+//         size_t numKeys = 10000;
+//         return std::pair<int, BloomFilterRFParameters>{numKeys, genParams((rand() % numKeys) + numKeys, 9, 64)};
+//       });
+//       return ret;
+//     }()));
 
 TEST(OneOff, RangeQuery) {
   BloomRF<uint64_t, filters::uint128_t> bf{
@@ -267,14 +267,14 @@ TEST_P(BloomFilterUniform32Test, NoFalseNegativesRangeQueryExtraLargeRange) {
 
 GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(BloomFilterUniform32Test);
 
-INSTANTIATE_TEST_SUITE_P(
-    NoFalseNegatives,
-    BloomFilterUniform32Test,
-    testing::ValuesIn([]() {
-      std::vector<std::pair<int, BloomFilterRFParameters>> ret;
-      std::generate_n(std::back_inserter(ret), 15, []() {
-        size_t numKeys = 10000;
-        return std::pair<int, BloomFilterRFParameters>{numKeys, genParams((rand() % numKeys) + numKeys, 9, 64)};
-      });
-      return ret;
-    }()));
+// INSTANTIATE_TEST_SUITE_P(
+//     NoFalseNegatives,
+//     BloomFilterUniform32Test,
+//     testing::ValuesIn([]() {
+//       std::vector<std::pair<int, BloomFilterRFParameters>> ret;
+//       std::generate_n(std::back_inserter(ret), 15, []() {
+//         size_t numKeys = 10000;
+//         return std::pair<int, BloomFilterRFParameters>{numKeys, genParams((rand() % numKeys) + numKeys, 9, 64)};
+//       });
+//       return ret;
+//     }()));

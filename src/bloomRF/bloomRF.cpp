@@ -160,7 +160,7 @@ bool BloomRF<T, UnderType>::checkDIOfDecomposition(T low, T high, int layer) con
     std::cout << "iters: " << iters << std::endl;
     for (int i = 0; i < iters; ++i) {
       std::cout << filterPos << std::endl;
-      UnderType bitmask = ~0;
+      UnderType bitmask = ~UnderType{0};
       if (i == 0) {
         bitmask ^= (UnderType{1} << (lowOffset % (8 * sizeof(UnderType)))) - 1;
       }
@@ -297,7 +297,7 @@ UnderType BloomRF<T, UnderType>::buildBitMaskForRange(T low,
                                                       int wordPos) const {
   UnderType lowOffset = ((low >> shifts[i]) & ((1 << (delta[i] - 1)) - 1));
   UnderType highOffset = ((high >> shifts[i]) & ((1 << (delta[i] - 1)) - 1));
-  UnderType bitmask = ~0;
+  UnderType bitmask = ~UnderType{0};
   bitmask ^= (UnderType{1} << lowOffset) - 1;
   if (highOffset < 8 * sizeof(UnderType) - 1) {
     bitmask &= (UnderType{1} << (highOffset + 1)) - 1;
