@@ -77,5 +77,5 @@ int main() {
   std::cout << "-----------RUNNING RANGE EXPERIMENTS-----------" << std::endl;
   runRangeExperimentsForUniform<uint64_t, uint32_t>();
   runRangeExperimentsForUniform<uint64_t, uint64_t>();
-  //runRangeExperimentsForUniform<uint64_t, filters::uint128_t>();
+  runRangeExperimentsForUniform<uint64_t, filters::uint128_t>();
 }

@@ -86,7 +86,7 @@ template <typename T, typename UnderType>
 void BloomRF<T, UnderType>::add(T data) {
   for (size_t i = 0; i < hashes; ++i) {
     auto hash = hashToIndexAndBitMask(data, i);
-    std::cout << hash.first << std::endl;
+    //std::cout << hash.first << std::endl;
     //printBinary(hash.second);
     filter[hash.first] |= hash.second;
   }
@@ -145,11 +145,11 @@ bool BloomRF<T, UnderType>::checkDIOfDecomposition(T low, T high, int layer) con
       return true;
     }
   } else {
-    std::cout << "checking di of decomposition" << std::endl;
-    std::cout << low << ", " << high << std::endl;
+    //std::cout << "checking di of decomposition" << std::endl;
+    //std::cout << low << ", " << high << std::endl;
 
     auto pmhfWordsPerUT = (1 << (delta[layer] - 1)) / (8 * sizeof(UnderType));
-    std::cout << "pmhf words per undertype: " << pmhfWordsPerUT << std::endl;
+    //std::cout << "pmhf words per undertype: " << pmhfWordsPerUT << std::endl;
     auto filterPos = pos * pmhfWordsPerUT;
     UnderType lowOffset =
       ((low >> shifts[layer]) & ((UnderType{1} << (delta[layer] - 1)) - 1));
@@ -157,20 +157,20 @@ bool BloomRF<T, UnderType>::checkDIOfDecomposition(T low, T high, int layer) con
     UnderType highOffset =
       ((high >> shifts[layer]) & ((UnderType{1} << (delta[layer] - 1)) - 1));
     size_t iters = (highOffset / (8 * sizeof(UnderType))) - (lowOffset / (8 * sizeof(UnderType))) + 1;
-    std::cout << "iters: " << iters << std::endl;
+    //std::cout << "iters: " << iters << std::endl;
     for (int i = 0; i < iters; ++i) {
-      std::cout << filterPos << std::endl;
+      //std::cout << filterPos << std::endl;
       UnderType bitmask = ~UnderType{0};
       if (i == 0) {
         bitmask ^= (UnderType{1} << (lowOffset % (8 * sizeof(UnderType)))) - 1;
       }
       if (i == iters - 1 && (highOffset % (8 * sizeof(UnderType))) < (8 * sizeof(UnderType) - 1)) {
-        std::cerr << highOffset << std::endl;
+        //std::cerr << highOffset << std::endl;
         bitmask &= (UnderType{1} << ((highOffset % (8 * sizeof(UnderType))) + 1)) - 1;
       }
-      std::cout << i << std::endl;
-      printBinary(bitmask);
-      printBinary(filter[filterPos]);
+      //std::cout << i << std::endl;
+      //printBinary(bitmask);
+      //printBinary(filter[filterPos]);
       if ((bitmask & filter[filterPos]) != 0) {
         return true;
       }
@@ -343,7 +343,7 @@ template class BloomRF<uint64_t>;
 template class BloomRF<uint64_t, uint32_t>;
 
 #ifdef __SIZEOF_INT128__
-//template class BloomRF<uint64_t, uint128_t>;
+template class BloomRF<uint64_t, uint128_t>;
 #endif
 
 }  // namespace filters
