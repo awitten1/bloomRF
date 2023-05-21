@@ -84,7 +84,6 @@ size_t BloomRF<T, UnderType>::hash(T data, size_t i) const {
 
 template <typename T, typename UnderType>
 void BloomRF<T, UnderType>::add(T data) {
-  //std::cout << "adding data" << std::endl;
   for (size_t i = 0; i < hashes; ++i) {
     auto hash = hashToIndexAndBitMask(data, i);
     //std::cout << hash.first << std::endl;
@@ -123,9 +122,7 @@ std::pair<size_t, UnderType> BloomRF<T, UnderType>::hashToIndexAndBitMask(T data
     assert(div.rem < 8 * sizeof(UnderType));
 
     filterPos += div.quot;
-
     return {filterPos, (UnderType{1} << div.rem)};
-
   }
 }
 
@@ -324,7 +321,13 @@ BloomRF<T, UnderType>::BloomRF(size_t size_,
   }
 
   if (std::accumulate(delta.begin(), delta.end(), 0) > 8 * sizeof(T)) {
-    throw std::logic_error{"Sum of Delta vector should not exceed width of key."};
+    throw std::logic_error{"Sum of delta vector should not exceed width of key."};
+  }
+
+  for (const auto& d : delta) {
+    if (d == 0) {
+      throw std::logic_error{"Delta vector cannot have zero values."};
+    }
   }
 
   /// Compute prefix sums.
