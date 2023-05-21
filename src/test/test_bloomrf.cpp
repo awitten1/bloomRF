@@ -12,11 +12,11 @@
 #include <random>
 #include <unordered_set>
 
-#include "bloomRF/bloomRF.h"
 #include "city/city.h"
+#include "test_helpers.h"
 
-using filters::BloomFilterRFParameters;
-using filters::BloomRF;
+namespace filters {
+namespace test {
 
 uint64_t randomUniformUint64() {
   std::random_device rd;
@@ -59,19 +59,6 @@ class BloomFilterUniform128Test : public ::testing::Test,
 
   BloomRF<uint64_t, filters::uint128_t> bf{GetParam().second};
 };
-
-BloomFilterRFParameters genParams(size_t filterSizeBytes, int maxDelta, size_t maxDeltaSum) {
-  std::random_device rd;
-  std::mt19937_64 e2(rd());
-  std::uniform_int_distribution<uint64_t> layer(2, maxDelta);
-
-  std::vector<size_t> layers((rand() % 8) + 2);
-  std::generate(layers.begin(), layers.end(), [&]() { return layer(rd); });
-  while (std::accumulate(layers.begin(), layers.end(), 0) > maxDeltaSum) {
-    std::generate(layers.begin(), layers.end(), [&]() { return layer(rd); });
-  }
-  return BloomFilterRFParameters{filterSizeBytes, 0, layers};
-}
 
 TEST_P(BloomFilterUniform128Test, NoFalseNegativesPointQuery) {
   for (auto it = s.cbegin(); it != s.cend(); ++it) {
@@ -274,7 +261,9 @@ INSTANTIATE_TEST_SUITE_P(
       std::vector<std::pair<int, BloomFilterRFParameters>> ret;
       std::generate_n(std::back_inserter(ret), 15, []() {
         size_t numKeys = 10000;
-        return std::pair<int, BloomFilterRFParameters>{numKeys, genParams((rand() % numKeys) + numKeys, 9, 64)};
+        return std::pair<int, BloomFilterRFParameters>{numKeys, genParams((rand() % numKeys) + numKeys, 11, 64)};
       });
       return ret;
     }()));
+}
+}

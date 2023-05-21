@@ -31,7 +31,7 @@ void runRangeExperimentsForUniform() {
     return uniform(mt);
   };
   ExperimentDriver<T, decltype(genUniform), UnderType> ed64U{
-      BloomFilterRFParameters{3200000, 0, {8, 8, 7, 6, 5, 4, 3}}, genUniform};
+      BloomFilterRFParameters{3200000, 0, {11, 10, 9, 8, 7, 5, 4, 3}}, genUniform};
 
   ed64U.doInserts(2000000);
   double fp = ed64U.randomRangeQuerys(
@@ -68,10 +68,10 @@ void runExperimentsForNormal() {
 }
 
 int main() {
-  runExperimentsForUniform<uint64_t, uint32_t>();
-  runExperimentsForNormal<uint64_t, uint32_t>();
-  runExperimentsForUniform<uint64_t, uint64_t>();
-  runExperimentsForNormal<uint64_t, uint64_t>();
+  // runExperimentsForUniform<uint64_t, uint32_t>();
+  // runExperimentsForNormal<uint64_t, uint32_t>();
+  // runExperimentsForUniform<uint64_t, uint64_t>();
+  // runExperimentsForNormal<uint64_t, uint64_t>();
   std::cout << "-----------RUNNING RANGE EXPERIMENTS-----------" << std::endl;
   runRangeExperimentsForUniform<uint64_t, uint32_t>();
   runRangeExperimentsForUniform<uint64_t, uint64_t>();
