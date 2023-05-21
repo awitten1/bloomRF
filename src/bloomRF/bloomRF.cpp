@@ -34,20 +34,6 @@ BloomFilterRFParameters::BloomFilterRFParameters(size_t filter_size_,
     throw std::logic_error{"The size of bloom filter cannot be zero"};
 }
 
-
-template<typename T>
-void printBinary(T t) {
-  std::vector<int> print;
-  auto x = 8 * sizeof(T);
-  while(x--) {
-    print.push_back(t % 2);
-    t >>= 1;
-  }
-  std::reverse(print.begin(), print.end());
-  std::copy(print.begin(), print.end(), std::ostream_iterator<int>(std::cerr));
-  std::cerr << std::endl;
-}
-
 template <typename T, typename UnderType>
 BloomRF<T, UnderType>::BloomRF(const BloomFilterRFParameters& params)
     : BloomRF<T, UnderType>(params.filter_size, params.seed, params.delta) {}
@@ -86,8 +72,6 @@ template <typename T, typename UnderType>
 void BloomRF<T, UnderType>::add(T data) {
   for (size_t i = 0; i < hashes; ++i) {
     auto hash = hashToIndexAndBitMask(data, i);
-    //std::cout << hash.first << std::endl;
-    //printBinary(hash.second);
     filter[hash.first] |= hash.second;
   }
 }
@@ -95,8 +79,8 @@ void BloomRF<T, UnderType>::add(T data) {
 template <typename T, typename UnderType>
 bool BloomRF<T, UnderType>::find(T data) const {
   for (size_t i = 0; i < hashes; ++i) {
-    auto hash = hashToIndexAndBitMask(data, i);
-    if (!(filter[hash.first] & hash.second)) {
+    const auto& [filterPos, bitmask] = hashToIndexAndBitMask(data, i);
+    if (!(filter[filterPos] & bitmask)) {
       return false;
     }
   }
@@ -109,16 +93,19 @@ std::pair<size_t, UnderType> BloomRF<T, UnderType>::hashToIndexAndBitMask(T data
   size_t pos = bloomRFHashToWord(data, i);
 
   if (1 << (delta[i] - 1) <= 8 * sizeof(UnderType)) {
-    auto div = getFilterPosAndOffset(pos, i);
+    // Case 1: Size of PMHF word is less than or equal to the size of the UnderType.
+    size_t wordsPerUnderType = 8 * sizeof(UnderType) / (1 << (delta[i] - 1));
+    std::ldiv_t div = std::ldiv(pos, wordsPerUnderType);
     return {div.quot, bloomRFRemainder(data, i, div.rem)};
+
   } else {
+    // Case 2: Size of PMHF word is greater than that of the UnderType.
     int pmhfWordsPerUT = (1 << (delta[i] - 1)) / (8 * sizeof(UnderType));
     auto filterPos = pos * pmhfWordsPerUT;
     UnderType offset =
       ((data >> shifts[i]) & ((UnderType{1} << (delta[i] - 1)) - 1));
     assert(offset < (1 << (delta[i] - 1)));
-
-    auto div = std::ldiv(offset, 8 * sizeof(UnderType));
+    std::ldiv_t div = std::ldiv(offset, 8 * sizeof(UnderType));
     assert(div.rem < 8 * sizeof(UnderType));
 
     filterPos += div.quot;
@@ -127,17 +114,13 @@ std::pair<size_t, UnderType> BloomRF<T, UnderType>::hashToIndexAndBitMask(T data
 }
 
 template <typename T, typename UnderType>
-std::ldiv_t BloomRF<T, UnderType>::getFilterPosAndOffset(size_t pos, size_t i) const {
-  size_t wordsPerUnderType = 8 * sizeof(UnderType) / (1 << (delta[i] - 1));
-  return std::ldiv(pos, wordsPerUnderType);
-}
-
-template <typename T, typename UnderType>
 bool BloomRF<T, UnderType>::checkDIOfDecomposition(T low, T high, int layer) const {
   size_t pos = bloomRFHashToWord(low, layer);
 
   if (1 << (delta[layer] - 1) <= 8 * sizeof(UnderType)) {
-    auto div = getFilterPosAndOffset(pos, layer);
+    // Case 1: Size of PMHF word is less than or equal to the size of the UnderType.
+    size_t wordsPerUnderType = 8 * sizeof(UnderType) / (1 << (delta[layer] - 1));
+    std::ldiv_t div = std::ldiv(pos, wordsPerUnderType);
     UnderType bitmask =
       buildBitMaskForRange(low, high, layer, div.rem);
     UnderType word = filter[div.quot];
@@ -145,32 +128,24 @@ bool BloomRF<T, UnderType>::checkDIOfDecomposition(T low, T high, int layer) con
       return true;
     }
   } else {
-    //std::cout << "checking di of decomposition" << std::endl;
-    //std::cout << low << ", " << high << std::endl;
-
-    auto pmhfWordsPerUT = (1 << (delta[layer] - 1)) / (8 * sizeof(UnderType));
-    //std::cout << "pmhf words per undertype: " << pmhfWordsPerUT << std::endl;
-    auto filterPos = pos * pmhfWordsPerUT;
+    // Case 2: Size of PMHF word is greater than that of the UnderType.
+    // In this case we need to iterate over the UnderTypes that comprise the PMHF word.
+    int pmhfWordsPerUT = (1 << (delta[layer] - 1)) / (8 * sizeof(UnderType));
+    int filterPos = pos * pmhfWordsPerUT;
     UnderType lowOffset =
       ((low >> shifts[layer]) & ((UnderType{1} << (delta[layer] - 1)) - 1));
     filterPos += (lowOffset / (8 * sizeof(UnderType)));
     UnderType highOffset =
       ((high >> shifts[layer]) & ((UnderType{1} << (delta[layer] - 1)) - 1));
     size_t iters = (highOffset / (8 * sizeof(UnderType))) - (lowOffset / (8 * sizeof(UnderType))) + 1;
-    //std::cout << "iters: " << iters << std::endl;
     for (int i = 0; i < iters; ++i) {
-      //std::cout << filterPos << std::endl;
       UnderType bitmask = ~UnderType{0};
       if (i == 0) {
         bitmask ^= (UnderType{1} << (lowOffset % (8 * sizeof(UnderType)))) - 1;
       }
       if (i == iters - 1 && (highOffset % (8 * sizeof(UnderType))) < (8 * sizeof(UnderType) - 1)) {
-        //std::cerr << highOffset << std::endl;
         bitmask &= (UnderType{1} << ((highOffset % (8 * sizeof(UnderType))) + 1)) - 1;
       }
-      //std::cout << i << std::endl;
-      //printBinary(bitmask);
-      //printBinary(filter[filterPos]);
       if ((bitmask & filter[filterPos]) != 0) {
         return true;
       }
@@ -183,8 +158,6 @@ bool BloomRF<T, UnderType>::checkDIOfDecomposition(T low, T high, int layer) con
 template <typename T, typename UnderType>
 bool BloomRF<T, UnderType>::findRange(T lkey, T hkey) const {
   Checks checks(lkey, hkey, {});
-  //std::cout << "finding range" << std::endl;
-  //std::cout << lkey << ", " << hkey << std::endl;
 
   checks.initChecks(shifts.back(), delta.back());
 

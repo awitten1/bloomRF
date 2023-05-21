@@ -95,8 +95,6 @@ class BloomRF {
 
   UnderType bloomRFRemainder(T data, size_t i, int wordPos) const;
 
-  std::ldiv_t getFilterPosAndOffset(size_t pos, size_t i) const;
-
   std::pair<size_t, UnderType> hashToIndexAndBitMask(T data, size_t i) const;
 
   size_t hash(T data, size_t i) const;
