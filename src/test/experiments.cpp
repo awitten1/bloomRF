@@ -31,7 +31,8 @@ void runRangeExperimentsForUniform() {
     return uniform(mt);
   };
   ExperimentDriver<T, decltype(genUniform), UnderType> ed64U{
-      BloomFilterRFParameters{3200000, 0, {11, 10, 9, 8, 7, 5, 4, 3}}, genUniform};
+      BloomFilterRFParameters{3200000, 0, {11, 10, 9, 8, 7, 5, 4, 3}},
+      genUniform};
 
   ed64U.doInserts(2000000);
   double fp = ed64U.randomRangeQuerys(

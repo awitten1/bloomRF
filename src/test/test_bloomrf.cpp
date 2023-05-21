@@ -27,8 +27,8 @@ uint64_t randomUniformUint64() {
 }
 
 class BloomFilterUniform32Test : public ::testing::Test,
-                                  public testing::WithParamInterface<
-                                      std::pair<int, BloomFilterRFParameters>> {
+                                 public testing::WithParamInterface<
+                                     std::pair<int, BloomFilterRFParameters>> {
  protected:
   void SetUp() override {
     for (int i = 0; i < GetParam().first; ++i) {
@@ -132,14 +132,14 @@ INSTANTIATE_TEST_SUITE_P(
       std::vector<std::pair<int, BloomFilterRFParameters>> ret;
       std::generate_n(std::back_inserter(ret), 15, []() {
         size_t numKeys = 10000;
-        return std::pair<int, BloomFilterRFParameters>{numKeys, genParams((rand() % numKeys) + numKeys, 9, 64)};
+        return std::pair<int, BloomFilterRFParameters>{
+            numKeys, genParams((rand() % numKeys) + numKeys, 9, 64)};
       });
       return ret;
     }()));
 
 TEST(OneOff, RangeQuery) {
-  BloomRF<uint64_t, uint64_t> bf{
-      BloomFilterRFParameters{16000, 0, {9, 8, 6}}};
+  BloomRF<uint64_t, uint64_t> bf{BloomFilterRFParameters{16000, 0, {9, 8, 6}}};
   uint64_t key = 17183560791176864955ULL;
   bf.add(key);
   ASSERT_TRUE(bf.findRange(key - 100, key + 100));
@@ -261,9 +261,10 @@ INSTANTIATE_TEST_SUITE_P(
       std::vector<std::pair<int, BloomFilterRFParameters>> ret;
       std::generate_n(std::back_inserter(ret), 15, []() {
         size_t numKeys = 10000;
-        return std::pair<int, BloomFilterRFParameters>{numKeys, genParams((rand() % numKeys) + numKeys, 11, 64)};
+        return std::pair<int, BloomFilterRFParameters>{
+            numKeys, genParams((rand() % numKeys) + numKeys, 11, 64)};
       });
       return ret;
     }()));
-}
-}
+}  // namespace test
+}  // namespace filters

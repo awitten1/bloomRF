@@ -12,8 +12,8 @@
 #include <random>
 #include <unordered_set>
 
-#include "test_helpers.h"
 #include "city/city.h"
+#include "test_helpers.h"
 
 namespace filters {
 namespace test {
@@ -26,9 +26,10 @@ int64_t randomUniformInt64() {
   return dist(rd);
 }
 
-class BloomFilterUniformSigned64Test : public ::testing::Test,
-                                  public testing::WithParamInterface<
-                                      std::pair<int, BloomFilterRFParameters>> {
+class BloomFilterUniformSigned64Test
+    : public ::testing::Test,
+      public testing::WithParamInterface<
+          std::pair<int, BloomFilterRFParameters>> {
  protected:
   void SetUp() override {
     for (int i = 0; i < GetParam().first; ++i) {
@@ -87,7 +88,8 @@ TEST_P(BloomFilterUniformSigned64Test, NoFalseNegativesRangeQueryLargeRange) {
   }
 }
 
-TEST_P(BloomFilterUniformSigned64Test, NoFalseNegativesRangeQueryExtraLargeRange) {
+TEST_P(BloomFilterUniformSigned64Test,
+       NoFalseNegativesRangeQueryExtraLargeRange) {
   for (auto it = s.cbegin(); it != s.cend(); ++it) {
     auto low = *it - rand() % 100000;
     auto high = *it + rand() % 100000;
@@ -115,11 +117,12 @@ INSTANTIATE_TEST_SUITE_P(
       std::vector<std::pair<int, BloomFilterRFParameters>> ret;
       std::generate_n(std::back_inserter(ret), 15, []() {
         size_t numKeys = 10000;
-        return std::pair<int, BloomFilterRFParameters>{numKeys, genParams((rand() % numKeys) + numKeys, 9, 64)};
+        return std::pair<int, BloomFilterRFParameters>{
+            numKeys, genParams((rand() % numKeys) + numKeys, 9, 64)};
       });
       return ret;
     }()));
 
-}
+}  // namespace test
 
-}
+}  // namespace filters

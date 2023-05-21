@@ -121,10 +121,9 @@ class BloomRfImpl {
   Container filter;
 };
 
-template<typename Key, typename UnderType = uint64_t,
-    typename = void>
+template <typename Key, typename UnderType = uint64_t, typename = void>
 class BloomRF : private BloomRfImpl<Key, UnderType> {
-public:
+ public:
   using BloomRfImpl<Key, UnderType>::add;
   using BloomRfImpl<Key, UnderType>::find;
   using BloomRfImpl<Key, UnderType>::findRange;
@@ -133,35 +132,36 @@ public:
   using BloomRfImpl<Key, UnderType>::BloomRfImpl;
 };
 
-template<typename Key, typename UnderType>
+template <typename Key, typename UnderType>
 class BloomRF<Key, UnderType, std::enable_if_t<std::is_signed_v<Key>>>
-  : private BloomRfImpl<std::make_unsigned_t<Key>, UnderType> {
-
+    : private BloomRfImpl<std::make_unsigned_t<Key>, UnderType> {
   using UnsignedKey = std::make_unsigned_t<Key>;
 
-public:
+ public:
   void add(Key data) {
-    UnsignedKey unsignedData = static_cast<UnsignedKey>(data) - std::numeric_limits<Key>::min();
+    UnsignedKey unsignedData =
+        static_cast<UnsignedKey>(data) - std::numeric_limits<Key>::min();
     BloomRfImpl<UnsignedKey, UnderType>::add(unsignedData);
   }
 
   bool find(Key data) {
-    UnsignedKey unsignedData = static_cast<UnsignedKey>(data) - std::numeric_limits<Key>::min();
+    UnsignedKey unsignedData =
+        static_cast<UnsignedKey>(data) - std::numeric_limits<Key>::min();
     return BloomRfImpl<UnsignedKey, UnderType>::find(unsignedData);
   }
 
   bool findRange(Key low, Key high) {
-    UnsignedKey unsignedLow = static_cast<UnsignedKey>(low) - std::numeric_limits<Key>::min();
-    UnsignedKey unsignedHigh = static_cast<UnsignedKey>(high) - std::numeric_limits<Key>::min();
-    return BloomRfImpl<UnsignedKey, UnderType>::findRange(unsignedLow, unsignedHigh);
+    UnsignedKey unsignedLow =
+        static_cast<UnsignedKey>(low) - std::numeric_limits<Key>::min();
+    UnsignedKey unsignedHigh =
+        static_cast<UnsignedKey>(high) - std::numeric_limits<Key>::min();
+    return BloomRfImpl<UnsignedKey, UnderType>::findRange(unsignedLow,
+                                                          unsignedHigh);
   }
 
   using BloomRfImpl<UnsignedKey, UnderType>::getDelta;
   using BloomRfImpl<UnsignedKey, UnderType>::getFilter;
   using BloomRfImpl<UnsignedKey, UnderType>::BloomRfImpl;
-
 };
-
-
 
 }  // namespace filters
