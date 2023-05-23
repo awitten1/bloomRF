@@ -34,6 +34,8 @@ BloomFilterRFParameters::BloomFilterRFParameters(size_t filter_size_,
     throw std::logic_error{"The size of bloom filter cannot be zero"};
 }
 
+namespace detail {
+
 template <typename T, typename UnderType>
 BloomRfImpl<T, UnderType>::BloomRfImpl(const BloomFilterRFParameters& params)
     : BloomRfImpl<T, UnderType>(params.filter_size, params.seed, params.delta) {
@@ -326,8 +328,6 @@ template class BloomRfImpl<uint32_t>;
 template class BloomRfImpl<uint64_t>;
 template class BloomRfImpl<uint64_t, uint32_t>;
 
-#ifdef __SIZEOF_INT128__
-template class BloomRfImpl<uint64_t, uint128_t>;
-#endif
+} // namespace detail
 
 }  // namespace filters
