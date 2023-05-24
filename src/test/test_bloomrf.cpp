@@ -12,11 +12,11 @@
 #include <random>
 #include <unordered_set>
 
-#include "bloomRF/bloomRF.h"
 #include "city/city.h"
+#include "test_helpers.h"
 
-using filters::BloomFilterRFParameters;
-using filters::BloomRF;
+namespace filters {
+namespace test {
 
 uint64_t randomUniformUint64() {
   std::random_device rd;
@@ -27,8 +27,8 @@ uint64_t randomUniformUint64() {
 }
 
 class BloomFilterUniform32Test : public ::testing::Test,
-                                  public testing::WithParamInterface<
-                                      std::pair<int, BloomFilterRFParameters>> {
+                                 public testing::WithParamInterface<
+                                     std::pair<int, BloomFilterRFParameters>> {
  protected:
   void SetUp() override {
     for (int i = 0; i < GetParam().first; ++i) {
@@ -43,7 +43,7 @@ class BloomFilterUniform32Test : public ::testing::Test,
   BloomRF<uint64_t, uint32_t> bf{GetParam().second};
 };
 
-class BloomFilterUniform128Test : public ::testing::Test,
+class BloomFilterUniform64Test : public ::testing::Test,
                                   public testing::WithParamInterface<
                                       std::pair<int, BloomFilterRFParameters>> {
  protected:
@@ -57,29 +57,16 @@ class BloomFilterUniform128Test : public ::testing::Test,
   // Keep track of what has actually been inserted.
   std::vector<uint64_t> s;
 
-  BloomRF<uint64_t, filters::uint128_t> bf{GetParam().second};
+  BloomRF<uint64_t, uint64_t> bf{GetParam().second};
 };
 
-BloomFilterRFParameters genParams(size_t filterSizeBytes, int maxDelta, size_t maxDeltaSum) {
-  std::random_device rd;
-  std::mt19937_64 e2(rd());
-  std::uniform_int_distribution<uint64_t> layer(2, maxDelta);
-
-  std::vector<size_t> layers((rand() % 8) + 2);
-  std::generate(layers.begin(), layers.end(), [&]() { return layer(rd); });
-  while (std::accumulate(layers.begin(), layers.end(), 0) > maxDeltaSum) {
-    std::generate(layers.begin(), layers.end(), [&]() { return layer(rd); });
-  }
-  return BloomFilterRFParameters{filterSizeBytes, 0, layers};
-}
-
-TEST_P(BloomFilterUniform128Test, NoFalseNegativesPointQuery) {
+TEST_P(BloomFilterUniform64Test, NoFalseNegativesPointQuery) {
   for (auto it = s.cbegin(); it != s.cend(); ++it) {
     ASSERT_TRUE(bf.find(*it));
   }
 }
 
-TEST_P(BloomFilterUniform128Test, NoFalseNegativesRangeQuerySmallRange) {
+TEST_P(BloomFilterUniform64Test, NoFalseNegativesRangeQuerySmallRange) {
   for (auto it = s.cbegin(); it != s.cend(); ++it) {
     auto low = *it - rand() % 10;
     auto high = *it + rand() % 10;
@@ -98,7 +85,7 @@ TEST_P(BloomFilterUniform128Test, NoFalseNegativesRangeQuerySmallRange) {
   }
 }
 
-TEST_P(BloomFilterUniform128Test, NoFalseNegativesRangeQueryLargeRange) {
+TEST_P(BloomFilterUniform64Test, NoFalseNegativesRangeQueryLargeRange) {
   for (auto it = s.cbegin(); it != s.cend(); ++it) {
     auto low = *it - rand() % 10000;
     auto high = *it + rand() % 10000;
@@ -117,7 +104,7 @@ TEST_P(BloomFilterUniform128Test, NoFalseNegativesRangeQueryLargeRange) {
   }
 }
 
-TEST_P(BloomFilterUniform128Test, NoFalseNegativesRangeQueryExtraLargeRange) {
+TEST_P(BloomFilterUniform64Test, NoFalseNegativesRangeQueryExtraLargeRange) {
   for (auto it = s.cbegin(); it != s.cend(); ++it) {
     auto low = *it - rand() % 100000;
     auto high = *it + rand() % 100000;
@@ -136,23 +123,23 @@ TEST_P(BloomFilterUniform128Test, NoFalseNegativesRangeQueryExtraLargeRange) {
   }
 }
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(BloomFilterUniform128Test);
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(BloomFilterUniform64Test);
 
 INSTANTIATE_TEST_SUITE_P(
     NoFalseNegatives,
-    BloomFilterUniform128Test,
+    BloomFilterUniform64Test,
     testing::ValuesIn([]() {
       std::vector<std::pair<int, BloomFilterRFParameters>> ret;
       std::generate_n(std::back_inserter(ret), 15, []() {
         size_t numKeys = 10000;
-        return std::pair<int, BloomFilterRFParameters>{numKeys, genParams((rand() % numKeys) + numKeys, 9, 64)};
+        return std::pair<int, BloomFilterRFParameters>{
+            numKeys, genParams((rand() % numKeys) + numKeys, 9, 64)};
       });
       return ret;
     }()));
 
 TEST(OneOff, RangeQuery) {
-  BloomRF<uint64_t, uint64_t> bf{
-      BloomFilterRFParameters{16000, 0, {9, 8, 6}}};
+  BloomRF<uint64_t, uint64_t> bf{BloomFilterRFParameters{16000, 0, {9, 8, 6}}};
   uint64_t key = 17183560791176864955ULL;
   bf.add(key);
   ASSERT_TRUE(bf.findRange(key - 100, key + 100));
@@ -274,7 +261,10 @@ INSTANTIATE_TEST_SUITE_P(
       std::vector<std::pair<int, BloomFilterRFParameters>> ret;
       std::generate_n(std::back_inserter(ret), 15, []() {
         size_t numKeys = 10000;
-        return std::pair<int, BloomFilterRFParameters>{numKeys, genParams((rand() % numKeys) + numKeys, 9, 64)};
+        return std::pair<int, BloomFilterRFParameters>{
+            numKeys, genParams((rand() % numKeys) + numKeys, 11, 64)};
       });
       return ret;
     }()));
+}  // namespace test
+}  // namespace filters
