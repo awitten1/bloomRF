@@ -4,6 +4,7 @@
 #include <type_traits>
 #include <vector>
 #include <bit>
+#include <cstring>
 
 #include "city/city.h"
 
