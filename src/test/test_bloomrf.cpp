@@ -133,7 +133,7 @@ INSTANTIATE_TEST_SUITE_P(
       std::generate_n(std::back_inserter(ret), 15, []() {
         size_t numKeys = 10000;
         return std::pair<int, BloomFilterRFParameters>{
-            numKeys, genParams((rand() % numKeys) + numKeys, 9, 64)};
+            numKeys, genParams((rand() % numKeys) + numKeys, 8, 9, 64)};
       });
       return ret;
     }()));
@@ -262,7 +262,7 @@ INSTANTIATE_TEST_SUITE_P(
       std::generate_n(std::back_inserter(ret), 15, []() {
         size_t numKeys = 10000;
         return std::pair<int, BloomFilterRFParameters>{
-            numKeys, genParams((rand() % numKeys) + numKeys, 11, 64)};
+            numKeys, genParams((rand() % numKeys) + numKeys, 8, 11, 64)};
       });
       return ret;
     }()));
