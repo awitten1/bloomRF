@@ -1,4 +1,3 @@
-#include <_types/_uint64_t.h>
 #include <cstddef>
 #include <iostream>
 #include <limits>
@@ -210,6 +209,11 @@ class BloomRF<FloatKey, UnderType, std::enable_if_t<std::is_floating_point_v<Flo
   {
       static_assert(sizeof(FloatKey) == sizeof(UnsignedKey));
       static_assert(std::numeric_limits<FloatKey>::is_iec559);
+
+      // floats and ints must have the same endianness.  On platforms for which the endianness
+      // of floats and ints are different, std::endian::native should be neither big, nor little.
+      // Therefore, here we assert that the endianness is either big or little.
+      static_assert(std::endian::native == std::endian::big || std::endian::native == std::endian::little);
 
       SignedKey k;
       std::memcpy(&k, &x, sizeof k);
