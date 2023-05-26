@@ -31,19 +31,11 @@ void runRangeExperimentsForUniform() {
     return uniform(mt);
   };
   ExperimentDriver<T, decltype(genUniform), UnderType> ed64U{
-      BloomFilterRFParameters{3200000, 0, {11, 10, 9, 8, 7, 5, 4, 3}},
+      BloomFilterRFParameters{2600000, 0, {11, 10, 9, 8, 7, 5, 4, 3}},
       genUniform};
 
   ed64U.doInserts(2000000);
-  double fp = ed64U.randomRangeQuerys(
-      30000,
-      [=, uniform = std::uniform_int_distribution<T>{
-              (std::numeric_limits<T>::max() >> 1) + 1,
-              std::numeric_limits<T>::max() -
-                  100000000}]() mutable -> std::pair<T, T> {
-        auto start = uniform(mt);
-        return {start, start + 100000000};
-      });
+  double fp = ed64U.randomRangeQuerys(10000, 1000000000);
 
   std::cout << fp << std::endl;
 }
