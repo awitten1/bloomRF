@@ -34,7 +34,7 @@ class ExperimentDriver {
           if (lower_bound == s.end()) {
             return false;
           }
-          return *lower_bound < high;
+          return *lower_bound <= high;
         }()
     };
   }
