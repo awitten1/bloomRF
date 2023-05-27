@@ -49,12 +49,11 @@ class BloomRfImpl {
     enum class IntervalLocation { Left, Right, NotYetSplit };
 
     struct Check {
-      Check(T low_, T high_, IntervalLocation loc_)
-          : low{low_}, high{high_}, loc{loc_} {}
+      Check(T low_, T high_)
+          : low{low_}, high{high_} {}
 
       T low;
       T high;
-      IntervalLocation loc;
     };
 
     Checks(T lkey_, T hkey_, std::vector<Check>&& checks_)
@@ -64,7 +63,7 @@ class BloomRfImpl {
 
     void initChecks(size_t delta_sum, size_t delta_back);
 
-    void advanceChecks(size_t times);
+    void advanceChecks(size_t shifts, size_t delta);
 
     void concatenateChecks(const Checks& other) {
       checks.insert(checks.end(), other.checks.begin(), other.checks.end());

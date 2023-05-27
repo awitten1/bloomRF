@@ -175,17 +175,18 @@ bool BloomRfImpl<T, UnderType>::findRange(T lkey, T hkey) const {
 
   for (int layer = hashes - 1; layer >= 0; --layer) {
     Checks new_checks(lkey, hkey, {});
-    checks.compressChecks(shifts[layer] + delta[layer] - 1);
+    //checks.compressChecks(shifts[layer] + delta[layer] - 1);
 
     for (const auto& check : checks.getChecks()) {
+      std::cout << check.low << "," << check.high << std::endl;
       if (check.low < lkey || check.high > hkey) {
         auto hash = hashToIndexAndBitMask(check.low, layer);
         if (filter[hash.first] & hash.second) {
           Checks check_for_interval{
               lkey,
               hkey,
-              {typename Checks::Check{check.low, check.high, check.loc}}};
-          check_for_interval.advanceChecks(delta[layer - 1]);
+              {typename Checks::Check{check.low, check.high}}};
+          check_for_interval.advanceChecks(shifts[layer - 1], delta[layer - 1]);
           new_checks.concatenateChecks(check_for_interval);
         }
       } else {
@@ -202,63 +203,22 @@ bool BloomRfImpl<T, UnderType>::findRange(T lkey, T hkey) const {
 }
 
 template <typename T, typename UnderType>
-void BloomRfImpl<T, UnderType>::Checks::compressChecks(size_t total_shift) {
+void BloomRfImpl<T, UnderType>::Checks::advanceChecks(size_t shifts, size_t delta) {
+  T target_width = 1 << shifts;
   std::vector<Check> new_checks;
   for (const auto& check : checks) {
-    if (check.low < lkey || check.high > hkey) {
-      new_checks.push_back(check);
-    } else if (!new_checks.empty() && check.loc == new_checks.back().loc &&
-               ((new_checks.back().low >> total_shift) ==
-                (check.low >> total_shift)) &&
-               !(new_checks.back().low < lkey ||
-                 new_checks.back().high > hkey)) {
-      assert(new_checks.back().high + 1 == check.low);
-      new_checks.back().high = check.high;
-    } else {
-      new_checks.push_back(check);
+    T low = (lkey / target_width) * target_width;
+    for (T counter = low; counter <= check.high; counter += target_width) {
+      T curr_high = counter + target_width;
+      if (!new_checks.empty() && new_checks.back().low >= lkey && curr_high <= hkey &&
+        (counter >> (shifts + delta - 1) == new_checks.back().low >> (shifts + delta - 1))) {
+          new_checks.back().high = curr_high;
+      } else {
+        new_checks.push_back({counter, curr_high});
+      }
     }
   }
   checks = std::move(new_checks);
-}
-
-template <typename T, typename UnderType>
-void BloomRfImpl<T, UnderType>::Checks::advanceChecks(size_t times) {
-  for (int i = 0; i < times; ++i) {
-    std::vector<Check> new_checks;
-    for (const auto& check : checks) {
-      T mid = check.high - ((check.high - check.low) >> 1);
-      if (check.loc == IntervalLocation::NotYetSplit) {
-        /// If the interval has not yet split, then there must be only one
-        /// check.
-        assert(checks.size() == 1);
-
-        if (mid <= lkey) {
-          new_checks.push_back(
-              {mid, check.high, IntervalLocation::NotYetSplit});
-        } else if (mid - 1 >= hkey) {
-          new_checks.push_back({check.low, static_cast<T>(mid - 1),
-                                IntervalLocation::NotYetSplit});
-        } else {
-          new_checks.push_back(
-              {check.low, static_cast<T>(mid - 1), IntervalLocation::Left});
-          new_checks.push_back({mid, check.high, IntervalLocation::Right});
-        }
-      } else if (check.loc == IntervalLocation::Left) {
-        if (mid > lkey) {
-          new_checks.push_back(
-              {check.low, static_cast<T>(mid - 1), IntervalLocation::Left});
-        }
-        new_checks.push_back({mid, check.high, IntervalLocation::Left});
-      } else {
-        new_checks.push_back(
-            {check.low, static_cast<T>(mid - 1), IntervalLocation::Right});
-        if (mid <= hkey) {
-          new_checks.push_back({mid, check.high, IntervalLocation::Right});
-        }
-      }
-    }
-    checks = std::move(new_checks);
-  }
 }
 
 template <typename T, typename UnderType>
@@ -272,8 +232,8 @@ void BloomRfImpl<T, UnderType>::Checks::initChecks(size_t delta_sum,
         "Cannot init checks on a non-empty checks instance."};
   }
 
-  checks.push_back({low, high, IntervalLocation::NotYetSplit});
-  advanceChecks(domain_width - delta_sum);
+  checks.push_back({lkey, hkey});
+  advanceChecks(delta_sum, delta_back);
 }
 
 template <typename T, typename UnderType>
