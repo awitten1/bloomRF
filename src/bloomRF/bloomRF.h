@@ -3,6 +3,8 @@
 #include <limits>
 #include <type_traits>
 #include <vector>
+#include <bit>
+#include <cstring>
 
 #include "city/city.h"
 
@@ -143,7 +145,7 @@ class BloomRF : private detail::BloomRfImpl<Key, UnderType> {
 // the BloomRF on the unsigned integers.
 //
 template <typename Key, typename UnderType>
-class BloomRF<Key, UnderType, std::enable_if_t<std::is_signed_v<Key>>>
+class BloomRF<Key, UnderType, std::enable_if_t<std::is_signed_v<Key> && !std::is_floating_point_v<Key>>>
     : private detail::BloomRfImpl<std::make_unsigned_t<Key>, UnderType> {
   using UnsignedKey = std::make_unsigned_t<Key>;
 
@@ -172,6 +174,77 @@ class BloomRF<Key, UnderType, std::enable_if_t<std::is_signed_v<Key>>>
   using detail::BloomRfImpl<UnsignedKey, UnderType>::getDelta;
   using detail::BloomRfImpl<UnsignedKey, UnderType>::getFilter;
   using detail::BloomRfImpl<UnsignedKey, UnderType>::BloomRfImpl;
+};
+
+
+namespace detail {
+
+template<typename FloatType>
+struct FloatToUInt;
+
+template<>
+struct FloatToUInt<float> {
+  using uint_type = uint32_t;
+};
+
+template<>
+struct FloatToUInt<double> {
+  using uint_type = uint64_t;
+};
+
+} // detail
+
+
+
+//
+// Floating point support.  We need to map floats to unsigned integers in a way that preserves
+// ordering (if x < y then converted(x) < converted(y)).
+//
+template <typename FloatKey, typename UnderType>
+class BloomRF<FloatKey, UnderType, std::enable_if_t<std::is_floating_point_v<FloatKey>>>
+    : private detail::BloomRfImpl<typename detail::FloatToUInt<FloatKey>::uint_type, UnderType> {
+
+  using UnsignedKey = typename detail::FloatToUInt<FloatKey>::uint_type;
+  using SignedKey = std::make_signed_t<UnsignedKey>;
+
+  static UnsignedKey order_preserving_repr(FloatKey x)
+  {
+      static_assert(sizeof(FloatKey) == sizeof(UnsignedKey));
+      static_assert(std::numeric_limits<FloatKey>::is_iec559);
+
+      // floats and ints must have the same endianness.  On platforms for which the endianness
+      // of floats and ints are different, std::endian::native should be neither big, nor little.
+      // Therefore, here we assert that the endianness is either big or little.
+      static_assert(std::endian::native == std::endian::big || std::endian::native == std::endian::little);
+
+      SignedKey k;
+      std::memcpy(&k, &x, sizeof k);
+      if (k<0) k ^= std::numeric_limits<SignedKey>::max();
+      return static_cast<UnsignedKey>(k) - static_cast<UnsignedKey>(std::numeric_limits<SignedKey>::min());
+  }
+
+public:
+  void add(FloatKey data) {
+    UnsignedKey unsignedData = order_preserving_repr(data);
+    detail::BloomRfImpl<UnsignedKey, UnderType>::add(unsignedData);
+  }
+
+  bool find(FloatKey data) {
+    UnsignedKey unsignedData = order_preserving_repr(data);
+    return detail::BloomRfImpl<UnsignedKey, UnderType>::find(unsignedData);
+  }
+
+  bool findRange(FloatKey low, FloatKey high) {
+    UnsignedKey unsignedLow = order_preserving_repr(low);
+    UnsignedKey unsignedHigh = order_preserving_repr(high);
+    return detail::BloomRfImpl<UnsignedKey, UnderType>::findRange(unsignedLow,
+                                                          unsignedHigh);
+  }
+
+  using detail::BloomRfImpl<UnsignedKey, UnderType>::getDelta;
+  using detail::BloomRfImpl<UnsignedKey, UnderType>::getFilter;
+  using detail::BloomRfImpl<UnsignedKey, UnderType>::BloomRfImpl;
+
 };
 
 }  // namespace filters

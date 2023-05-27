@@ -13,6 +13,7 @@ add_executable(
   test_bloomrf
   test_bloomrf.cpp
   test_bloomrf_signed.cpp
+  test_bloomrf_floats.cpp
 )
 target_link_libraries(
   test_bloomrf
