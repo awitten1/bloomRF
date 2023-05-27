@@ -176,9 +176,10 @@ bool BloomRfImpl<T, UnderType>::findRange(T lkey, T hkey) const {
   for (int layer = hashes - 1; layer >= 0; --layer) {
     Checks new_checks(lkey, hkey, {});
     //checks.compressChecks(shifts[layer] + delta[layer] - 1);
-
+    std::cout << "layer: " << layer << std::endl;
     for (const auto& check : checks.getChecks()) {
-            std::cout << "[" << check.low << "," << check.high << "], ";
+      std::cout << "[" << check.low << "," << check.high << "], ";
+
       if (check.low < lkey || check.high > hkey) {
         auto hash = hashToIndexAndBitMask(check.low, layer);
         if (filter[hash.first] & hash.second) {
@@ -195,7 +196,7 @@ bool BloomRfImpl<T, UnderType>::findRange(T lkey, T hkey) const {
         }
       }
     }
-    std::cout << std::endl;
+    std::cout << std::endl ;
 
     checks = std::move(new_checks);
   }
@@ -208,14 +209,14 @@ void BloomRfImpl<T, UnderType>::Checks::advanceChecks(size_t shifts, size_t delt
   T target_width = 1 << shifts;
   std::vector<Check> new_checks;
   for (const auto& check : checks) {
-    T low = (lkey / target_width) * target_width;
+    T low = (std::max(lkey, check.low) / target_width) * target_width;
     for (T counter = low; counter <= check.high; counter += target_width) {
       T curr_high = counter + target_width;
       if (!new_checks.empty() && new_checks.back().low >= lkey && curr_high <= hkey &&
-        (counter >> (shifts + delta - 1) == new_checks.back().low >> (shifts + delta - 1))) {
-          new_checks.back().high = curr_high;
+        ((counter >> (shifts + delta - 1)) == (new_checks.back().low >> (shifts + delta - 1)))) {
+          new_checks.back().high = curr_high - 1;
       } else {
-        new_checks.push_back({counter, curr_high});
+        new_checks.push_back({counter, static_cast<T>(curr_high - 1)});
       }
     }
   }

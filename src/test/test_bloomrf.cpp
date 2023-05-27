@@ -142,6 +142,7 @@ TEST(OneOff, RangeQuery) {
   BloomRF<uint64_t, uint64_t> bf{BloomFilterRFParameters{16000, 0, {9, 8, 6}}};
   uint64_t key = 17183560791176864955ULL;
   std::cout<< key - 100 << "," << key + 100 << std::endl;
+  std::cout << "-----------------" << std::endl;
   bf.add(key);
   ASSERT_TRUE(bf.findRange(key - 100, key + 100));
 
