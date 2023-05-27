@@ -9,6 +9,7 @@
 #include <tuple>
 #include <type_traits>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 #include "bloomRF/bloomRF.h"
@@ -16,12 +17,14 @@
 using filters::BloomFilterRFParameters;
 using filters::BloomRF;
 
-template <typename T, typename RandomNumberGenerator, typename UnderType>
+template <typename T, typename Generator>
 class ExperimentDriver {
+
+ static_assert(std::is_same_v<T, decltype(std::declval<Generator>()())>);
+
  public:
-  ExperimentDriver(const BloomFilterRFParameters& params,
-                   RandomNumberGenerator dt)
-      : bf{params}, dist{std::move(dt)} {}
+  ExperimentDriver(const BloomFilterRFParameters& params, Generator g)
+      : gen(rd()), bf{params}, keyGenerator(g) { }
 
   std::pair<bool, bool> find(T data) {
     return {bf.find(data), std::binary_search(s.begin(), s.end(), data)};
@@ -46,7 +49,8 @@ class ExperimentDriver {
 
   void doInserts(int n) {
     for (int i = 0; i < n; ++i) {
-      insert(static_cast<T>(std::round(dist())));
+      T x = keyGenerator();
+      insert(static_cast<T>(x));
     }
     std::sort(s.begin(), s.end());
   }
@@ -56,7 +60,7 @@ class ExperimentDriver {
     int true_positive = 0;
 
     for (int i = 0; i < denominator; ++i) {
-      T q = dist();
+      T q = keyGenerator();
       const auto& [inFilter, in] = find(q);
       if (inFilter) {
         if (!in) {
@@ -76,14 +80,10 @@ class ExperimentDriver {
                            T interval_size) {
     int false_positives = 0;
     int true_positive = 0;
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_int_distribution<T> distrib(0, std::numeric_limits<T>::max());
-    std::uniform_int_distribution<T> interval_width(0, interval_size);
 
     for (int i = 0; i < denominator; ++i) {
-      T low = distrib(gen);
-      T high = low + interval_width(gen);
+      T low = keyGenerator();
+      T high = low + interval_size;
       if (high < low) high = std::numeric_limits<T>::max();
       const auto& [inFilter, in] = findRange(low, high);
       if (inFilter) {
@@ -95,12 +95,15 @@ class ExperimentDriver {
       }
     }
     auto fp =
-        static_cast<double>(false_positives) / static_cast<double>(denominator);
+        static_cast<double>(false_positives) / static_cast<double>(denominator - true_positive);
     return fp;
   }
 
  private:
-  BloomRF<T, UnderType> bf;
+
+  std::random_device rd;
+  std::mt19937 gen;
+  BloomRF<T> bf;
   std::vector<T> s;
-  RandomNumberGenerator dist;
+  Generator keyGenerator;
 };
