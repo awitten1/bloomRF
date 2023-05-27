@@ -178,7 +178,7 @@ bool BloomRfImpl<T, UnderType>::findRange(T lkey, T hkey) const {
     //checks.compressChecks(shifts[layer] + delta[layer] - 1);
 
     for (const auto& check : checks.getChecks()) {
-      std::cout << check.low << "," << check.high << std::endl;
+            std::cout << "[" << check.low << "," << check.high << "]";
       if (check.low < lkey || check.high > hkey) {
         auto hash = hashToIndexAndBitMask(check.low, layer);
         if (filter[hash.first] & hash.second) {
@@ -195,6 +195,7 @@ bool BloomRfImpl<T, UnderType>::findRange(T lkey, T hkey) const {
         }
       }
     }
+    std::cout << std::endl;
 
     checks = std::move(new_checks);
   }
