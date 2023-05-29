@@ -175,7 +175,7 @@ bool BloomRfImpl<T, UnderType>::findRange(T lkey, T hkey) const {
 
   for (int layer = hashes - 1; layer >= 0; --layer) {
     Checks new_checks(lkey, hkey, {});
-    checks.compressChecks(shifts[layer] + delta[layer] - 1);
+    //checks.compressChecks(shifts[layer] + delta[layer] - 1);
     //std::cout << "layer: " << layer << std::endl;
     for (const auto& check : checks.getChecks()) {
       //std::cout << "[" << check.low << "," << check.high << "], ";
@@ -215,7 +215,15 @@ void BloomRfImpl<T, UnderType>::Checks::advanceChecks(size_t shifts, size_t delt
     T upper_limit = (std::min(hkey, check.high) / target_width) * target_width;
     for (T counter = lower_limit; counter <= upper_limit && counter >= lower_limit; counter += target_width) {
       T curr_high = counter + target_width;
-      new_checks.push_back({counter, static_cast<T>(curr_high - 1)});
+      if (!new_checks.empty() &&
+               new_checks.back().low >> (shifts + delta - 1) ==
+                (counter >> (shifts + delta - 1)) && (curr_high <= hkey) &&
+               !(new_checks.back().low < lkey ||
+                 new_checks.back().high > hkey))  {
+        new_checks.back().high = static_cast<T>(curr_high - 1);
+      } else {
+        new_checks.push_back({counter, static_cast<T>(curr_high - 1)});
+      }
     }
   }
   checks = std::move(new_checks);
