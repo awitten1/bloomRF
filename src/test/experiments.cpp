@@ -4,76 +4,61 @@
 
 #include <cstddef>
 #include <iomanip>
+#include <iostream>
 #include <limits>
 #include <random>
+#include <type_traits>
 
-template <typename T, typename UnderType>
-void runExperimentsForUniform() {
-  std::random_device rd;
-  std::mt19937 mt{rd()};
-  auto genUniform = [=, uniform = std::uniform_int_distribution<T>{
-                            0}]() mutable { return uniform(mt); };
-  ExperimentDriver<T, decltype(genUniform), UnderType> ed64U{
-      BloomFilterRFParameters{3200000, 0, {6, 6, 6, 6, 6}}, genUniform};
+namespace {
+
+constexpr uint64_t uint64_max = std::numeric_limits<uint64_t>::max();
+
+
+
+template <typename T, typename Generator>
+void runRangeExperiments(T interval_size, Generator d) {
+  static_assert(std::is_same_v<decltype(d()), T>);
+
+  ExperimentDriver<T, Generator> ed64U{
+    BloomFilterRFParameters{2600000, 0, {10, 8, 6, 6, 5, 5, 4, 3}}, d};
 
   ed64U.doInserts(2000000);
-  double fp = ed64U.randomQuerys(30000);
+  double fp = ed64U.randomRangeQuerys(100000, interval_size);
 
   std::cout << fp << std::endl;
 }
 
-template <typename T, typename UnderType>
-void runRangeExperimentsForUniform() {
-  std::random_device rd;
-  std::mt19937 mt{rd()};
-  auto genUniform = [=, uniform = std::uniform_int_distribution<T>{
-                            0, std::numeric_limits<T>::max() >> 1}]() mutable {
-    return uniform(mt);
-  };
-  ExperimentDriver<T, decltype(genUniform), UnderType> ed64U{
-      BloomFilterRFParameters{3200000, 0, {11, 10, 9, 8, 7, 5, 4, 3}},
-      genUniform};
+template <typename T, typename Generator>
+void runPointExperiments(Generator d) {
+  static_assert(std::is_same_v<decltype(d()), T>);
+  ExperimentDriver<T, Generator> ed64U{
+    BloomFilterRFParameters{3200000, 0, {8, 8, 6, 6, 5, 5, 4, 3}}, d};
 
   ed64U.doInserts(2000000);
-  double fp = ed64U.randomRangeQuerys(
-      30000,
-      [=, uniform = std::uniform_int_distribution<T>{
-              (std::numeric_limits<T>::max() >> 1) + 1,
-              std::numeric_limits<T>::max() -
-                  100000000}]() mutable -> std::pair<T, T> {
-        auto start = uniform(mt);
-        return {start, start + 100000000};
-      });
+  double fp = ed64U.randomQuerys(100000);
 
   std::cout << fp << std::endl;
 }
 
-template <typename T, typename UnderType>
-void runExperimentsForNormal() {
-  std::random_device rd;
-  std::mt19937 mt{rd()};
-  std::normal_distribution<> normal{1ULL << 31, 1ULL << 29};
-  auto genNormal = [&]() mutable {
-    auto ret = normal(mt);
-    return ret;
-  };
-
-  ExperimentDriver<T, decltype(genNormal), UnderType> ed64N{
-      BloomFilterRFParameters{3200000, 0, {6, 6, 6, 6, 6, 6}}, genNormal};
-
-  ed64N.doInserts(2000000);
-
-  auto fp = ed64N.randomQuerys(30000);
-
-  std::cout << fp << std::endl;
 }
 
 int main() {
-  // runExperimentsForUniform<uint64_t, uint32_t>();
-  // runExperimentsForNormal<uint64_t, uint32_t>();
-  // runExperimentsForUniform<uint64_t, uint64_t>();
-  // runExperimentsForNormal<uint64_t, uint64_t>();
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  runPointExperiments<uint64_t>([=]() mutable {
+    auto val = std::normal_distribution<double>(1 << 30, 1 << 30)(gen);
+    return static_cast<uint64_t>(val);
+  });
+  runPointExperiments<uint64_t>([=]() mutable {
+    return std::uniform_int_distribution<uint64_t>(0, std::numeric_limits<uint64_t>::max())(gen);
+  });
   std::cout << "-----------RUNNING RANGE EXPERIMENTS-----------" << std::endl;
-  runRangeExperimentsForUniform<uint64_t, uint32_t>();
-  runRangeExperimentsForUniform<uint64_t, uint64_t>();
+  runRangeExperiments<uint64_t>(1e7, [=]() mutable {
+    auto val = std::normal_distribution<double>(1 << 30, 1 << 10)(gen);
+    return static_cast<uint64_t>(val);
+  });
+  runRangeExperiments<uint64_t>(1e7, [=]() mutable {
+    return std::uniform_int_distribution<uint64_t>(0, std::numeric_limits<uint64_t>::max())(gen);
+  });
+
 }
