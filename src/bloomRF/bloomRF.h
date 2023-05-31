@@ -207,7 +207,9 @@ class BloomRF<FloatKey, UnderType, std::enable_if_t<std::is_floating_point_v<Flo
   using UnsignedKey = typename detail::FloatToUInt<FloatKey>::uint_type;
   using SignedKey = std::make_signed_t<UnsignedKey>;
 
-  static UnsignedKey order_preserving_repr(FloatKey x)
+  // See https://stackoverflow.com/questions/52370587/converting-floating-point-to-unsigned-int-while-preserving-order
+  // and https://lemire.me/blog/2020/12/14/converting-floating-point-numbers-to-integers-while-preserving-order.
+  static constexpr UnsignedKey orderPreservingFloatToUInt(FloatKey x)
   {
       static_assert(sizeof(FloatKey) == sizeof(UnsignedKey));
       static_assert(std::numeric_limits<FloatKey>::is_iec559);
@@ -217,26 +219,37 @@ class BloomRF<FloatKey, UnderType, std::enable_if_t<std::is_floating_point_v<Flo
       // Therefore, here we assert that the endianness is either big or little.
       static_assert(std::endian::native == std::endian::big || std::endian::native == std::endian::little);
 
-      SignedKey k;
-      std::memcpy(&k, &x, sizeof k);
+      SignedKey k = std::bit_cast<SignedKey>(x);
       if (k<0) k ^= std::numeric_limits<SignedKey>::max();
       return static_cast<UnsignedKey>(k) - static_cast<UnsignedKey>(std::numeric_limits<SignedKey>::min());
   }
 
+  // Some compile time tests.
+  static_assert(orderPreservingFloatToUInt(-0.1) < orderPreservingFloatToUInt(0.1));
+  static_assert(orderPreservingFloatToUInt(-0.1) < orderPreservingFloatToUInt(0));
+  static_assert(orderPreservingFloatToUInt(0) < orderPreservingFloatToUInt(0.1));
+  static_assert(orderPreservingFloatToUInt(0.1) < orderPreservingFloatToUInt(0.2));
+  static_assert(orderPreservingFloatToUInt(-10) < orderPreservingFloatToUInt(10));
+  static_assert(orderPreservingFloatToUInt(13) < orderPreservingFloatToUInt(1342));
+  static_assert(orderPreservingFloatToUInt(-10) < orderPreservingFloatToUInt(10));
+  static_assert(orderPreservingFloatToUInt(-1342) < orderPreservingFloatToUInt(-13));
+  static_assert(orderPreservingFloatToUInt(std::numeric_limits<FloatKey>::lowest()) < orderPreservingFloatToUInt(0));
+  static_assert(orderPreservingFloatToUInt(std::numeric_limits<FloatKey>::lowest()) < orderPreservingFloatToUInt(std::numeric_limits<FloatKey>::max()));
+
 public:
   void add(FloatKey data) {
-    UnsignedKey unsignedData = order_preserving_repr(data);
+    UnsignedKey unsignedData = orderPreservingFloatToUInt(data);
     detail::BloomRfImpl<UnsignedKey, UnderType>::add(unsignedData);
   }
 
   bool find(FloatKey data) {
-    UnsignedKey unsignedData = order_preserving_repr(data);
+    UnsignedKey unsignedData = orderPreservingFloatToUInt(data);
     return detail::BloomRfImpl<UnsignedKey, UnderType>::find(unsignedData);
   }
 
   bool findRange(FloatKey low, FloatKey high) {
-    UnsignedKey unsignedLow = order_preserving_repr(low);
-    UnsignedKey unsignedHigh = order_preserving_repr(high);
+    UnsignedKey unsignedLow = orderPreservingFloatToUInt(low);
+    UnsignedKey unsignedHigh = orderPreservingFloatToUInt(high);
     return detail::BloomRfImpl<UnsignedKey, UnderType>::findRange(unsignedLow,
                                                           unsignedHigh);
   }
