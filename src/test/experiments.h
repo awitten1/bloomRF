@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <functional>
+#include <iterator>
 #include <limits>
 #include <random>
 #include <string>
@@ -11,6 +12,7 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+#include <cassert>
 
 #include "bloomRF/bloomRF.h"
 
@@ -50,28 +52,36 @@ class ExperimentDriver {
   void doInserts(int n) {
     for (int i = 0; i < n; ++i) {
       T x = keyGenerator();
-      insert(static_cast<T>(x));
+      insert(x);
     }
-    std::sort(s.begin(), s.end());
   }
 
   double randomQuerys(int denominator) {
     int false_positives = 0;
-    int true_positive = 0;
+    int true_negative = 0;
+
+    std::random_device rd;
+    std::mt19937 gen(rd());
 
     for (int i = 0; i < denominator; ++i) {
       T q = keyGenerator();
-      const auto& [inFilter, in] = find(q);
+      const auto& [inFilter, actuallyIn] = find(q);
       if (inFilter) {
-        if (!in) {
+        if (!actuallyIn) {
           ++false_positives;
-        } else {
-          ++true_positive;
         }
+      }
+      if (!inFilter) {
+        ++true_negative;
+      }
+
+      // Extra sanity check.
+      if (actuallyIn) {
+        assert(inFilter);
       }
     }
     auto fp = static_cast<double>(false_positives) /
-              static_cast<double>(denominator - true_positive);
+              static_cast<double>(false_positives + true_negative);
     return fp;
   }
 
@@ -79,23 +89,33 @@ class ExperimentDriver {
   double randomRangeQuerys(int denominator,
                            T interval_size) {
     int false_positives = 0;
-    int true_positive = 0;
+    int true_negative = 0;
+
+    std::random_device rd;
+    std::mt19937 gen(rd());
 
     for (int i = 0; i < denominator; ++i) {
       T low = keyGenerator();
       T high = low + interval_size;
       if (high < low) high = std::numeric_limits<T>::max();
-      const auto& [inFilter, in] = findRange(low, high);
+      const auto& [inFilter, actuallyIn] = findRange(low, high);
       if (inFilter) {
-        if (!in) {
+        if (!actuallyIn) {
           ++false_positives;
-        } else {
-          ++true_positive;
         }
       }
+      if (!inFilter) {
+        ++true_negative;
+      }
+
+      // Extra sanity check.
+      if (actuallyIn) {
+        assert(inFilter);
+      }
     }
+
     auto fp =
-        static_cast<double>(false_positives) / static_cast<double>(denominator - true_positive);
+        static_cast<double>(false_positives) / static_cast<double>(false_positives + true_negative);
     return fp;
   }
 
