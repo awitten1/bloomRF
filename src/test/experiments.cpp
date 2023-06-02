@@ -20,7 +20,7 @@ void runRangeExperiments(T interval_size, Generator d) {
   static_assert(std::is_same_v<decltype(d()), T>);
 
   ExperimentDriver<T, Generator> ed64U{
-    BloomFilterRFParameters{2600000, 0, {10, 8, 6, 6, 5, 5, 4, 3}}, d};
+    BloomFilterRFParameters{6000000, 0, {10, 8, 6, 6, 5, 5, 4, 3}}, d};
 
   ed64U.doInserts(2000000);
   double fp = ed64U.randomRangeQuerys(100000, interval_size);
@@ -45,20 +45,22 @@ void runPointExperiments(Generator d) {
 int main() {
   std::random_device rd;
   std::mt19937 gen(rd());
-  runPointExperiments<uint64_t>([=]() mutable {
-    auto val = std::normal_distribution<double>(1 << 30, 1 << 30)(gen);
+  runPointExperiments<uint64_t>([&]() mutable {
+    auto val = std::normal_distribution<double>(1 << 30, 1ULL << 40)(gen);
     return static_cast<uint64_t>(val);
   });
-  runPointExperiments<uint64_t>([=]() mutable {
+  runPointExperiments<uint64_t>([&]() mutable {
     return std::uniform_int_distribution<uint64_t>(0, std::numeric_limits<uint64_t>::max())(gen);
   });
   std::cout << "-----------RUNNING RANGE EXPERIMENTS-----------" << std::endl;
-  runRangeExperiments<uint64_t>(1e7, [=]() mutable {
-    auto val = std::normal_distribution<double>(1 << 30, 1 << 10)(gen);
+  runRangeExperiments<uint64_t>(1e3, [&]() mutable {
+    auto val = std::normal_distribution<double>(1 << 30, 1ULL << 38)(gen);
     return static_cast<uint64_t>(val);
   });
-  runRangeExperiments<uint64_t>(1e7, [=]() mutable {
+  runRangeExperiments<uint64_t>(1e7, [&]() mutable {
     return std::uniform_int_distribution<uint64_t>(0, std::numeric_limits<uint64_t>::max())(gen);
   });
-
+  runRangeExperiments<double>(1000000, [&]() mutable {
+    return std::uniform_real_distribution<double>(0, std::numeric_limits<double>::max())(gen);
+  });
 }

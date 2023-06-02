@@ -169,6 +169,9 @@ bool BloomRfImpl<T, UnderType>::checkDIOfDecomposition(T low,
 
 template <typename T, typename UnderType>
 bool BloomRfImpl<T, UnderType>::findRange(T lkey, T hkey) const {
+  if (lkey > hkey) {
+    throw std::logic_error{"lkey < hkey must hold for findRange arguments."};
+  }
   Checks checks(lkey, hkey, {});
 
   checks.initChecks(shifts.back(), delta.back());
