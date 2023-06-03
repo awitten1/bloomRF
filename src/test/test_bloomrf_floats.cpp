@@ -27,12 +27,13 @@ FloatingPoint randomUniformFloat(FloatingPoint low, FloatingPoint high) {
 }
 
 class BloomFilterUniformFloat : public ::testing::Test,
-                                  public testing::WithParamInterface<
-                                      std::pair<int, BloomFilterRFParameters>> {
+                                public testing::WithParamInterface<
+                                    std::pair<int, BloomFilterRFParameters>> {
  protected:
   void SetUp() override {
     for (int i = 0; i < GetParam().first; ++i) {
-      auto x = randomUniformFloat(std::numeric_limits<float>::min(), std::numeric_limits<float>::max());
+      auto x = randomUniformFloat(std::numeric_limits<float>::min(),
+                                  std::numeric_limits<float>::max());
       s.push_back(x);
       bf.add(x);
     }
@@ -52,7 +53,8 @@ TEST_P(BloomFilterUniformFloat, NoFalseNegativesPointQuery) {
 TEST_P(BloomFilterUniformFloat, NoFalseNegativesRangeQuerySmallRange) {
   for (auto it = s.cbegin(); it != s.cend(); ++it) {
     auto low = *it - randomUniformFloat(.001, .01);
-    auto high = *it + randomUniformFloat(.001, .01);;
+    auto high = *it + randomUniformFloat(.001, .01);
+    ;
     bool found = bf.findRange(low, high);
     if (!found) {
       std::ostringstream os;
@@ -122,13 +124,13 @@ INSTANTIATE_TEST_SUITE_P(
     }()));
 
 TEST(OneOffFloat, RangeQuery) {
-  BloomRF<float, uint64_t> bf{BloomFilterRFParameters{16000, 0, {7, 6, 6, 4, 3}}};
+  BloomRF<float, uint64_t> bf{
+      BloomFilterRFParameters{16000, 0, {7, 6, 6, 4, 3}, {1, 1, 1, 1, 2}}};
   float key = 0;
   bf.add(key);
   ASSERT_TRUE(bf.findRange(key - 1, key + 1));
   ASSERT_TRUE(bf.findRange(key - .0001, key + .0001));
 }
 
-
-} // test
-} // filters
+}  // namespace test
+}  // namespace filters

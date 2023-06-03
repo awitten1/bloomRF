@@ -1,6 +1,9 @@
 #pragma once
 
+#include <algorithm>
 #include <random>
+#include <sstream>
+#include <vector>
 #include "bloomRF/bloomRF.h"
 
 namespace filters {
@@ -20,7 +23,24 @@ inline BloomFilterRFParameters genParams(size_t filterSizeBytes,
   while (std::accumulate(layers.begin(), layers.end(), 0) > maxDeltaSum) {
     std::generate(layers.begin(), layers.end(), [&]() { return layer(rd); });
   }
-  return BloomFilterRFParameters{filterSizeBytes, 0, layers};
+  std::vector<int> r(layers.size());
+  std::generate(r.begin(), r.end(), []() { return rand() % 2 + 1; });
+  return BloomFilterRFParameters{filterSizeBytes, 0, layers, r};
+}
+
+template <typename T>
+std::ostringstream genParamString(const BloomRF<T>& bf) {
+  std::ostringstream os;
+  os << "Delta vector: ";
+  for (auto&& v : bf.getDelta()) {
+    os << v << " ";
+  }
+  os << std::endl << "R vector: ";
+  for (auto&& r : bf.getR()) {
+    os << r << " ";
+  }
+  os << std::endl;
+  return os;
 }
 
 }  // namespace test
