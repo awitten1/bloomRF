@@ -46,18 +46,18 @@ int main() {
   std::random_device rd;
   std::mt19937 gen(rd());
   runPointExperiments<uint64_t>([&]() mutable {
-    auto val = std::normal_distribution<double>(1 << 30, 1ULL << 40)(gen);
+    auto val = std::normal_distribution<double>(1ULL << 30, 1ULL << 28)(gen);
     return static_cast<uint64_t>(val);
   });
   runPointExperiments<uint64_t>([&]() mutable {
     return std::uniform_int_distribution<uint64_t>(0, std::numeric_limits<uint64_t>::max())(gen);
   });
   std::cout << "-----------RUNNING RANGE EXPERIMENTS-----------" << std::endl;
-  runRangeExperiments<uint64_t>(1e3, [&]() mutable {
-    auto val = std::normal_distribution<double>(1 << 30, 1ULL << 38)(gen);
-    return static_cast<uint64_t>(val);
+  runRangeExperiments<uint64_t>(1e9, [&]() mutable {
+    uint64_t val = std::round(std::normal_distribution<double>(1ULL << 30, 1ULL << 28)(gen));
+    return val;
   });
-  runRangeExperiments<uint64_t>(1e7, [&]() mutable {
+  runRangeExperiments<uint64_t>(1e9, [&]() mutable {
     return std::uniform_int_distribution<uint64_t>(0, std::numeric_limits<uint64_t>::max())(gen);
   });
   runRangeExperiments<double>(1000000, [&]() mutable {

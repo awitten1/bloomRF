@@ -54,6 +54,7 @@ class ExperimentDriver {
       T x = keyGenerator();
       insert(x);
     }
+    std::sort(s.begin(), s.end());
   }
 
   double randomQuerys(int denominator) {
