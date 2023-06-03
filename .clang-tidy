@@ -1,0 +1,21 @@
+
+Checks: '*,
+
+    -readability-function-cognitive-complexity,
+    -bugprone-easily-swappable-parameters,
+    -altera-id-dependent-backward-branch,
+    -google-readability-braces-around-statements,-hicpp-braces-around-statements,
+    -readability-braces-around-statements,
+    -modernize-use-nodiscard,-cppcoreguidelines-avoid-magic-numbers,
+    -readability-magic-numbers,
+    -readability-inconsistent-declaration-parameter-name,
+    -llvmlibc-implementation-in-namespace,
+    -misc-const-correctness,
+    -modernize-use-trailing-return-type,
+    -llvmlibc-restrict-system-libc-headers,
+    -misc-non-private-member-variables-in-classes,
+    -llvmlibc-callee-namespace,
+    -readability-identifier-length,
+    -cppcoreguidelines-pro-type-reinterpret-cast,
+    -llvm-header-guard
+    '
