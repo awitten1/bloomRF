@@ -19,14 +19,15 @@
 using filters::BloomFilterRFParameters;
 using filters::BloomRF;
 
-template <typename T, typename Generator>
+template <typename T, typename Generator, typename QueryGenerator>
 class ExperimentDriver {
 
- static_assert(std::is_same_v<T, decltype(std::declval<Generator>()())>);
+  static_assert(std::is_same_v<T, decltype(std::declval<Generator>()())>);
+  static_assert(std::is_same_v<T, decltype(std::declval<QueryGenerator>()())>);
 
  public:
-  ExperimentDriver(const BloomFilterRFParameters& params, Generator g)
-      : gen(rd()), bf{params}, keyGenerator(g) { }
+  ExperimentDriver(const BloomFilterRFParameters& params, Generator g, QueryGenerator qg)
+      : gen(rd()), bf{params}, keyGenerator(g), queryKeyGenerator(qg) { }
 
   std::pair<bool, bool> find(T data) {
     return {bf.find(data), std::binary_search(s.begin(), s.end(), data)};
@@ -126,4 +127,5 @@ class ExperimentDriver {
   BloomRF<T> bf;
   std::vector<T> s;
   Generator keyGenerator;
+  QueryGenerator queryKeyGenerator;
 };

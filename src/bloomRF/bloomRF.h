@@ -13,7 +13,8 @@ namespace filters {
 struct BloomFilterRFParameters {
   BloomFilterRFParameters(size_t filter_size_,
                           size_t seed_,
-                          std::vector<size_t> delta_);
+                          std::vector<size_t> delta_,
+                          std::vector<int> r);
 
   /// size of filter in bytes.
   size_t filter_size;
@@ -21,6 +22,8 @@ struct BloomFilterRFParameters {
   size_t seed;
   /// Distance between layers.
   std::vector<size_t> delta;
+  // Number of hash functions per layer.
+  std::vector<int> r;
 };
 
 namespace detail {
@@ -41,7 +44,10 @@ class BloomRfImpl {
   const Container& getFilter() const { return filter; }
   Container& getFilter() { return filter; }
 
-  const std::vector<size_t>& getDelta() { return delta; }
+  const std::vector<size_t>& getDelta() const { return delta; }
+
+  const auto& getR() const { return r; }
+
 
  private:
   class Checks {
@@ -82,7 +88,7 @@ class BloomRfImpl {
 
   UnderType buildBitMaskForRange(T low, T high, size_t i, int wordPos) const;
 
-  explicit BloomRfImpl(size_t size_, size_t seed_, std::vector<size_t> delta);
+  explicit BloomRfImpl(size_t size_, size_t seed_, std::vector<size_t> delta, std::vector<int> r);
 
   /// Returns size in bits.
   size_t numBits() const { return 8 * sizeof(UnderType) * filter.size(); }
@@ -90,11 +96,11 @@ class BloomRfImpl {
   /// Computes the ith PMHF hash of data. Only returns the word
   /// to which the data maps to.  Use bloomRFRemainder to retrieve the
   /// offset.
-  size_t bloomRFHashToWord(T data, size_t i) const;
+  size_t bloomRFHashToWord(T data, size_t i, int ri) const;
 
   UnderType bloomRFRemainder(T data, size_t i, int wordPos) const;
 
-  std::pair<size_t, UnderType> hashToIndexAndBitMask(T data, size_t i) const;
+  std::pair<size_t, UnderType> hashToIndexAndBitMask(T data, size_t i, int ri) const;
 
   size_t hash(T data, size_t i) const;
 
@@ -110,6 +116,9 @@ class BloomRfImpl {
 
   /// Distance between layers.
   std::vector<size_t> delta;
+
+  // Hash functions per layer.
+  std::vector<int> r;
 
   /// Prefix sums of delta.
   std::vector<size_t> shifts;
@@ -133,6 +142,7 @@ class BloomRF : private detail::BloomRfImpl<Key, UnderType> {
   using detail::BloomRfImpl<Key, UnderType>::findRange;
   using detail::BloomRfImpl<Key, UnderType>::getDelta;
   using detail::BloomRfImpl<Key, UnderType>::getFilter;
+  using detail::BloomRfImpl<Key, UnderType>::getR;
   using detail::BloomRfImpl<Key, UnderType>::BloomRfImpl;
 };
 
@@ -172,6 +182,7 @@ class BloomRF<Key, UnderType, std::enable_if_t<std::is_signed_v<Key> && !std::is
 
   using detail::BloomRfImpl<UnsignedKey, UnderType>::getDelta;
   using detail::BloomRfImpl<UnsignedKey, UnderType>::getFilter;
+  using detail::BloomRfImpl<UnsignedKey, UnderType>::getR;
   using detail::BloomRfImpl<UnsignedKey, UnderType>::BloomRfImpl;
 };
 
@@ -255,6 +266,7 @@ public:
 
   using detail::BloomRfImpl<UnsignedKey, UnderType>::getDelta;
   using detail::BloomRfImpl<UnsignedKey, UnderType>::getFilter;
+  using detail::BloomRfImpl<UnsignedKey, UnderType>::getR;
   using detail::BloomRfImpl<UnsignedKey, UnderType>::BloomRfImpl;
 
 };

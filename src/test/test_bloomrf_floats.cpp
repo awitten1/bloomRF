@@ -122,7 +122,7 @@ INSTANTIATE_TEST_SUITE_P(
     }()));
 
 TEST(OneOffFloat, RangeQuery) {
-  BloomRF<float, uint64_t> bf{BloomFilterRFParameters{16000, 0, {7, 6, 6, 4, 3}}};
+  BloomRF<float, uint64_t> bf{BloomFilterRFParameters{16000, 0, {7, 6, 6, 4, 3}, {1, 1, 1, 1, 2}}};
   float key = 0;
   bf.add(key);
   ASSERT_TRUE(bf.findRange(key - 1, key + 1));
