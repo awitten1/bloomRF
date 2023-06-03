@@ -1,3 +1,6 @@
+#pragma once
+
+#include <bit>
 #include <cstddef>
 #include <iostream>
 #include <limits>
@@ -36,7 +39,7 @@ class BloomRfImpl {
 
   bool find(T data) const;
 
-  bool findRange(T low, T high) const;
+  bool findRange(T lkey, T hkey) const;
 
   const Container& getFilter() const { return filter; }
   Container& getFilter() { return filter; }
@@ -161,11 +164,13 @@ class BloomRF<Key, UnderType, std::enable_if_t<std::is_signed_v<Key> && !std::is
     return detail::BloomRfImpl<UnsignedKey, UnderType>::find(unsignedData);
   }
 
-  bool findRange(Key low, Key high) {
+  bool findRange(Key lkey, Key hkey) {
     UnsignedKey unsignedLow =
-        static_cast<UnsignedKey>(low) - static_cast<UnsignedKey>(std::numeric_limits<Key>::min());
+        static_cast<UnsignedKey>(lkey) -
+        static_cast<UnsignedKey>(std::numeric_limits<Key>::min());
     UnsignedKey unsignedHigh =
-        static_cast<UnsignedKey>(high) - static_cast<UnsignedKey>(std::numeric_limits<Key>::min());
+        static_cast<UnsignedKey>(hkey) -
+        static_cast<UnsignedKey>(std::numeric_limits<Key>::min());
     return detail::BloomRfImpl<UnsignedKey, UnderType>::findRange(unsignedLow,
                                                           unsignedHigh);
   }
@@ -246,9 +251,9 @@ public:
     return detail::BloomRfImpl<UnsignedKey, UnderType>::find(unsignedData);
   }
 
-  bool findRange(FloatKey low, FloatKey high) {
-    UnsignedKey unsignedLow = orderPreservingFloatToUInt(low);
-    UnsignedKey unsignedHigh = orderPreservingFloatToUInt(high);
+  bool findRange(FloatKey lkey, FloatKey hkey) {
+    UnsignedKey unsignedLow = orderPreservingFloatToUInt(lkey);
+    UnsignedKey unsignedHigh = orderPreservingFloatToUInt(hkey);
     return detail::BloomRfImpl<UnsignedKey, UnderType>::findRange(unsignedLow,
                                                           unsignedHigh);
   }
