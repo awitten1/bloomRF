@@ -30,7 +30,10 @@ BloomFilterRFParameters::BloomFilterRFParameters(size_t filter_size_,
                                                  size_t seed_,
                                                  std::vector<size_t> delta_,
                                                  std::vector<int> r_)
-    : filter_size(filter_size_), seed(seed_), delta(std::move(delta_)), r(std::move(r_)) {
+    : filter_size(filter_size_),
+      seed(seed_),
+      delta(std::move(delta_)),
+      r(std::move(r_)) {
   if (filter_size == 0) {
     throw std::logic_error{"The size of bloom filter cannot be zero"};
   }
@@ -40,11 +43,15 @@ namespace detail {
 
 template <typename T, typename UnderType>
 BloomRfImpl<T, UnderType>::BloomRfImpl(const BloomFilterRFParameters& params)
-    : BloomRfImpl<T, UnderType>(params.filter_size, params.seed, params.delta, params.r) {
-}
+    : BloomRfImpl<T, UnderType>(params.filter_size,
+                                params.seed,
+                                params.delta,
+                                params.r) {}
 
 template <typename T, typename UnderType>
-size_t BloomRfImpl<T, UnderType>::bloomRFHashToWord(T data, size_t i, int ri) const {
+size_t BloomRfImpl<T, UnderType>::bloomRFHashToWord(T data,
+                                                    size_t i,
+                                                    int ri) const {
   auto hash = this->hash(data >> (shifts[i] + delta[i] - 1), ri * hashes + i);
   return hash % (numBits() >> (delta[i] - 1));
 }
@@ -78,12 +85,13 @@ void BloomRfImpl<T, UnderType>::add(T data) {
   for (size_t i = 0; i < hashes; ++i) {
     for (int ri = 0; ri < r[i]; ++ri) {
       auto hash = hashToIndexAndBitMask(data, i, ri);
-      //std::cout << "[" << hash.first << ", " << hash.second << "] " << std::endl;
+      // std::cout << "[" << hash.first << ", " << hash.second << "] " <<
+      // std::endl;
       filter[hash.first] |= hash.second;
     }
-    //std::cout << endl;
+    // std::cout << endl;
   }
-  //std::cout << "Done adding" << std::endl;
+  // std::cout << "Done adding" << std::endl;
 }
 
 template <typename T, typename UnderType>
@@ -102,7 +110,8 @@ bool BloomRfImpl<T, UnderType>::find(T data) const {
 template <typename T, typename UnderType>
 std::pair<size_t, UnderType> BloomRfImpl<T, UnderType>::hashToIndexAndBitMask(
     T data,
-    size_t i, int ri) const {
+    size_t i,
+    int ri) const {
   size_t pos = bloomRFHashToWord(data, i, ri);
 
   if (1 << (delta[i] - 1) <= 8 * sizeof(UnderType)) {
@@ -154,21 +163,23 @@ bool BloomRfImpl<T, UnderType>::checkDIOfDecomposition(T low,
       UnderType lowOffset =
           ((low >> shifts[layer]) & ((UnderType{1} << (delta[layer] - 1)) - 1));
       filterPos += (lowOffset / (8 * sizeof(UnderType)));
-      UnderType highOffset =
-          ((high >> shifts[layer]) & ((UnderType{1} << (delta[layer] - 1)) - 1));
+      UnderType highOffset = ((high >> shifts[layer]) &
+                              ((UnderType{1} << (delta[layer] - 1)) - 1));
       size_t iters = (highOffset / (8 * sizeof(UnderType))) -
-                    (lowOffset / (8 * sizeof(UnderType))) + 1;
+                     (lowOffset / (8 * sizeof(UnderType))) + 1;
 
       bool all_zero = true;
       for (int i = 0; i < iters; ++i) {
         UnderType bitmask = ~UnderType{0};
         if (i == 0) {
-          bitmask ^= (UnderType{1} << (lowOffset % (8 * sizeof(UnderType)))) - 1;
+          bitmask ^=
+              (UnderType{1} << (lowOffset % (8 * sizeof(UnderType)))) - 1;
         }
         if (i == iters - 1 && (highOffset % (8 * sizeof(UnderType))) <
                                   (8 * sizeof(UnderType) - 1)) {
           bitmask &=
-              (UnderType{1} << ((highOffset % (8 * sizeof(UnderType))) + 1)) - 1;
+              (UnderType{1} << ((highOffset % (8 * sizeof(UnderType))) + 1)) -
+              1;
         }
         if ((bitmask & filter[filterPos]) != 0) {
           all_zero = false;
@@ -195,31 +206,30 @@ bool BloomRfImpl<T, UnderType>::findRange(T lkey, T hkey) const {
   for (int layer = hashes - 1; layer >= 0; --layer) {
     Checks new_checks(lkey, hkey, {});
     for (const auto& check : checks.getChecks()) {
-        bool all_true = true;
-        if (check.low < lkey || check.high > hkey) {
-          for (int ri = 0; ri < r[layer]; ++ri) {
+      bool all_true = true;
+      if (check.low < lkey || check.high > hkey) {
+        for (int ri = 0; ri < r[layer]; ++ri) {
           auto hash = hashToIndexAndBitMask(check.low, layer, ri);
-          //std::cout << "[" << hash.first << ", " << hash.second << "] ";
+          // std::cout << "[" << hash.first << ", " << hash.second << "] ";
 
           if (!(filter[hash.first] & hash.second)) {
             all_true = false;
           }
           if (all_true) {
             Checks check_for_interval{
-                lkey,
-                hkey,
-                {typename Checks::Check{check.low, check.high}}};
-            check_for_interval.advanceChecks(shifts[layer - 1], delta[layer - 1]);
+                lkey, hkey, {typename Checks::Check{check.low, check.high}}};
+            check_for_interval.advanceChecks(shifts[layer - 1],
+                                             delta[layer - 1]);
             new_checks.concatenateChecks(check_for_interval);
           }
-          }
-        } else {
-          if (checkDIOfDecomposition(check.low, check.high, layer)) {
-            return true;
-          }
         }
+      } else {
+        if (checkDIOfDecomposition(check.low, check.high, layer)) {
+          return true;
+        }
+      }
     }
-    //std::cout << std::endl;
+    // std::cout << std::endl;
 
     checks = std::move(new_checks);
   }
@@ -228,20 +238,23 @@ bool BloomRfImpl<T, UnderType>::findRange(T lkey, T hkey) const {
 }
 
 template <typename T, typename UnderType>
-void BloomRfImpl<T, UnderType>::Checks::advanceChecks(size_t shifts, size_t delta) {
+void BloomRfImpl<T, UnderType>::Checks::advanceChecks(size_t shifts,
+                                                      size_t delta) {
   T target_width = T{1} << shifts;
   std::vector<Check> new_checks;
   for (const auto& check : checks) {
     assert(check.low < lkey || check.high > hkey);
     T lower_limit = (std::max(lkey, check.low) / target_width) * target_width;
     T upper_limit = (std::min(hkey, check.high) / target_width) * target_width;
-    for (T counter = lower_limit; counter <= upper_limit && counter >= lower_limit; counter += target_width) {
+    for (T counter = lower_limit;
+         counter <= upper_limit && counter >= lower_limit;
+         counter += target_width) {
       T curr_high = counter + target_width;
       if (!new_checks.empty() &&
-               new_checks.back().low >> (shifts + delta - 1) ==
-                (counter >> (shifts + delta - 1)) && (curr_high <= hkey) &&
-               !(new_checks.back().low < lkey ||
-                 new_checks.back().high > hkey))  {
+          new_checks.back().low >> (shifts + delta - 1) ==
+              (counter >> (shifts + delta - 1)) &&
+          (curr_high <= hkey) &&
+          !(new_checks.back().low < lkey || new_checks.back().high > hkey)) {
         new_checks.back().high = static_cast<T>(curr_high - 1);
       } else {
         new_checks.push_back({counter, static_cast<T>(curr_high - 1)});
@@ -320,6 +333,6 @@ template class BloomRfImpl<uint32_t>;
 template class BloomRfImpl<uint64_t>;
 template class BloomRfImpl<uint64_t, uint32_t>;
 
-} // namespace detail
+}  // namespace detail
 
 }  // namespace filters

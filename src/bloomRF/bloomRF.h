@@ -1,10 +1,10 @@
+#include <bit>
 #include <cstddef>
+#include <cstring>
 #include <iostream>
 #include <limits>
 #include <type_traits>
 #include <vector>
-#include <bit>
-#include <cstring>
 
 #include "city/city.h"
 
@@ -48,15 +48,13 @@ class BloomRfImpl {
 
   const auto& getR() const { return r; }
 
-
  private:
   class Checks {
    public:
     enum class IntervalLocation { Left, Right, NotYetSplit };
 
     struct Check {
-      Check(T low_, T high_)
-          : low{low_}, high{high_} {}
+      Check(T low_, T high_) : low{low_}, high{high_} {}
 
       T low;
       T high;
@@ -88,7 +86,10 @@ class BloomRfImpl {
 
   UnderType buildBitMaskForRange(T low, T high, size_t i, int wordPos) const;
 
-  explicit BloomRfImpl(size_t size_, size_t seed_, std::vector<size_t> delta, std::vector<int> r);
+  explicit BloomRfImpl(size_t size_,
+                       size_t seed_,
+                       std::vector<size_t> delta,
+                       std::vector<int> r);
 
   /// Returns size in bits.
   size_t numBits() const { return 8 * sizeof(UnderType) * filter.size(); }
@@ -100,7 +101,9 @@ class BloomRfImpl {
 
   UnderType bloomRFRemainder(T data, size_t i, int wordPos) const;
 
-  std::pair<size_t, UnderType> hashToIndexAndBitMask(T data, size_t i, int ri) const;
+  std::pair<size_t, UnderType> hashToIndexAndBitMask(T data,
+                                                     size_t i,
+                                                     int ri) const;
 
   size_t hash(T data, size_t i) const;
 
@@ -129,7 +132,7 @@ class BloomRfImpl {
   Container filter;
 };
 
-}
+}  // namespace detail
 
 //
 // A wrapper on BloomRFImpl.
@@ -146,7 +149,6 @@ class BloomRF : private detail::BloomRfImpl<Key, UnderType> {
   using detail::BloomRfImpl<Key, UnderType>::BloomRfImpl;
 };
 
-
 //
 // BloomRF for signed integers is implmented in terms of BloomRF
 // for unsigned integers.  It first converts signed integers to unsigned
@@ -154,30 +156,37 @@ class BloomRF : private detail::BloomRfImpl<Key, UnderType> {
 // the BloomRF on the unsigned integers.
 //
 template <typename Key, typename UnderType>
-class BloomRF<Key, UnderType, std::enable_if_t<std::is_signed_v<Key> && !std::is_floating_point_v<Key>>>
+class BloomRF<
+    Key,
+    UnderType,
+    std::enable_if_t<std::is_signed_v<Key> && !std::is_floating_point_v<Key>>>
     : private detail::BloomRfImpl<std::make_unsigned_t<Key>, UnderType> {
   using UnsignedKey = std::make_unsigned_t<Key>;
 
  public:
   void add(Key data) {
     UnsignedKey unsignedData =
-        static_cast<UnsignedKey>(data) - static_cast<UnsignedKey>(std::numeric_limits<Key>::min());
+        static_cast<UnsignedKey>(data) -
+        static_cast<UnsignedKey>(std::numeric_limits<Key>::min());
     detail::BloomRfImpl<UnsignedKey, UnderType>::add(unsignedData);
   }
 
   bool find(Key data) {
     UnsignedKey unsignedData =
-        static_cast<UnsignedKey>(data) - static_cast<UnsignedKey>(std::numeric_limits<Key>::min());
+        static_cast<UnsignedKey>(data) -
+        static_cast<UnsignedKey>(std::numeric_limits<Key>::min());
     return detail::BloomRfImpl<UnsignedKey, UnderType>::find(unsignedData);
   }
 
   bool findRange(Key low, Key high) {
     UnsignedKey unsignedLow =
-        static_cast<UnsignedKey>(low) - static_cast<UnsignedKey>(std::numeric_limits<Key>::min());
+        static_cast<UnsignedKey>(low) -
+        static_cast<UnsignedKey>(std::numeric_limits<Key>::min());
     UnsignedKey unsignedHigh =
-        static_cast<UnsignedKey>(high) - static_cast<UnsignedKey>(std::numeric_limits<Key>::min());
+        static_cast<UnsignedKey>(high) -
+        static_cast<UnsignedKey>(std::numeric_limits<Key>::min());
     return detail::BloomRfImpl<UnsignedKey, UnderType>::findRange(unsignedLow,
-                                                          unsignedHigh);
+                                                                  unsignedHigh);
   }
 
   using detail::BloomRfImpl<UnsignedKey, UnderType>::getDelta;
@@ -186,67 +195,84 @@ class BloomRF<Key, UnderType, std::enable_if_t<std::is_signed_v<Key> && !std::is
   using detail::BloomRfImpl<UnsignedKey, UnderType>::BloomRfImpl;
 };
 
-
 namespace detail {
 
-template<typename FloatType>
+template <typename FloatType>
 struct FloatToUInt;
 
-template<>
+template <>
 struct FloatToUInt<float> {
   using uint_type = uint32_t;
 };
 
-template<>
+template <>
 struct FloatToUInt<double> {
   using uint_type = uint64_t;
 };
 
-} // detail
-
-
+}  // namespace detail
 
 //
-// Floating point support.  We need to map floats to unsigned integers in a way that preserves
-// ordering (if x < y then converted(x) < converted(y)).
+// Floating point support.  We need to map floats to unsigned integers in a way
+// that preserves ordering (if x < y then converted(x) < converted(y)).
 //
 template <typename FloatKey, typename UnderType>
-class BloomRF<FloatKey, UnderType, std::enable_if_t<std::is_floating_point_v<FloatKey>>>
-    : private detail::BloomRfImpl<typename detail::FloatToUInt<FloatKey>::uint_type, UnderType> {
-
+class BloomRF<FloatKey,
+              UnderType,
+              std::enable_if_t<std::is_floating_point_v<FloatKey>>>
+    : private detail::BloomRfImpl<
+          typename detail::FloatToUInt<FloatKey>::uint_type,
+          UnderType> {
   using UnsignedKey = typename detail::FloatToUInt<FloatKey>::uint_type;
   using SignedKey = std::make_signed_t<UnsignedKey>;
 
-  // See https://stackoverflow.com/questions/52370587/converting-floating-point-to-unsigned-int-while-preserving-order
-  // and https://lemire.me/blog/2020/12/14/converting-floating-point-numbers-to-integers-while-preserving-order.
-  static constexpr UnsignedKey orderPreservingFloatToUInt(FloatKey x)
-  {
-      static_assert(sizeof(FloatKey) == sizeof(UnsignedKey));
-      static_assert(std::numeric_limits<FloatKey>::is_iec559);
+  // See
+  // https://stackoverflow.com/questions/52370587/converting-floating-point-to-unsigned-int-while-preserving-order
+  // and
+  // https://lemire.me/blog/2020/12/14/converting-floating-point-numbers-to-integers-while-preserving-order.
+  static constexpr UnsignedKey orderPreservingFloatToUInt(FloatKey x) {
+    static_assert(sizeof(FloatKey) == sizeof(UnsignedKey));
+    static_assert(std::numeric_limits<FloatKey>::is_iec559);
 
-      // floats and ints must have the same endianness.  On platforms for which the endianness
-      // of floats and ints are different, std::endian::native should be neither big, nor little.
-      // Therefore, here we assert that the endianness is either big or little.
-      static_assert(std::endian::native == std::endian::big || std::endian::native == std::endian::little);
+    // floats and ints must have the same endianness.  On platforms for which
+    // the endianness of floats and ints are different, std::endian::native
+    // should be neither big, nor little. Therefore, here we assert that the
+    // endianness is either big or little.
+    static_assert(std::endian::native == std::endian::big ||
+                  std::endian::native == std::endian::little);
 
-      SignedKey k = std::bit_cast<SignedKey>(x);
-      if (k<0) k ^= std::numeric_limits<SignedKey>::max();
-      return static_cast<UnsignedKey>(k) - static_cast<UnsignedKey>(std::numeric_limits<SignedKey>::min());
+    SignedKey k = std::bit_cast<SignedKey>(x);
+    if (k < 0)
+      k ^= std::numeric_limits<SignedKey>::max();
+    return static_cast<UnsignedKey>(k) -
+           static_cast<UnsignedKey>(std::numeric_limits<SignedKey>::min());
   }
 
   // Some compile time tests.
-  static_assert(orderPreservingFloatToUInt(-0.1) < orderPreservingFloatToUInt(0.1));
-  static_assert(orderPreservingFloatToUInt(-0.1) < orderPreservingFloatToUInt(0));
-  static_assert(orderPreservingFloatToUInt(0) < orderPreservingFloatToUInt(0.1));
-  static_assert(orderPreservingFloatToUInt(0.1) < orderPreservingFloatToUInt(0.2));
-  static_assert(orderPreservingFloatToUInt(-10) < orderPreservingFloatToUInt(10));
-  static_assert(orderPreservingFloatToUInt(13) < orderPreservingFloatToUInt(1342));
-  static_assert(orderPreservingFloatToUInt(-10) < orderPreservingFloatToUInt(10));
-  static_assert(orderPreservingFloatToUInt(-1342) < orderPreservingFloatToUInt(-13));
-  static_assert(orderPreservingFloatToUInt(std::numeric_limits<FloatKey>::lowest()) < orderPreservingFloatToUInt(0));
-  static_assert(orderPreservingFloatToUInt(std::numeric_limits<FloatKey>::lowest()) < orderPreservingFloatToUInt(std::numeric_limits<FloatKey>::max()));
+  static_assert(orderPreservingFloatToUInt(-0.1) <
+                orderPreservingFloatToUInt(0.1));
+  static_assert(orderPreservingFloatToUInt(-0.1) <
+                orderPreservingFloatToUInt(0));
+  static_assert(orderPreservingFloatToUInt(0) <
+                orderPreservingFloatToUInt(0.1));
+  static_assert(orderPreservingFloatToUInt(0.1) <
+                orderPreservingFloatToUInt(0.2));
+  static_assert(orderPreservingFloatToUInt(-10) <
+                orderPreservingFloatToUInt(10));
+  static_assert(orderPreservingFloatToUInt(13) <
+                orderPreservingFloatToUInt(1342));
+  static_assert(orderPreservingFloatToUInt(-10) <
+                orderPreservingFloatToUInt(10));
+  static_assert(orderPreservingFloatToUInt(-1342) <
+                orderPreservingFloatToUInt(-13));
+  static_assert(
+      orderPreservingFloatToUInt(std::numeric_limits<FloatKey>::lowest()) <
+      orderPreservingFloatToUInt(0));
+  static_assert(
+      orderPreservingFloatToUInt(std::numeric_limits<FloatKey>::lowest()) <
+      orderPreservingFloatToUInt(std::numeric_limits<FloatKey>::max()));
 
-public:
+ public:
   void add(FloatKey data) {
     UnsignedKey unsignedData = orderPreservingFloatToUInt(data);
     detail::BloomRfImpl<UnsignedKey, UnderType>::add(unsignedData);
@@ -261,14 +287,13 @@ public:
     UnsignedKey unsignedLow = orderPreservingFloatToUInt(low);
     UnsignedKey unsignedHigh = orderPreservingFloatToUInt(high);
     return detail::BloomRfImpl<UnsignedKey, UnderType>::findRange(unsignedLow,
-                                                          unsignedHigh);
+                                                                  unsignedHigh);
   }
 
   using detail::BloomRfImpl<UnsignedKey, UnderType>::getDelta;
   using detail::BloomRfImpl<UnsignedKey, UnderType>::getFilter;
   using detail::BloomRfImpl<UnsignedKey, UnderType>::getR;
   using detail::BloomRfImpl<UnsignedKey, UnderType>::BloomRfImpl;
-
 };
 
 }  // namespace filters

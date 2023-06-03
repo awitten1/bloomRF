@@ -28,8 +28,8 @@ uint64_t randomUniformUint64() {
 }
 
 class BloomFilterUniform64Test : public ::testing::Test,
-                                  public testing::WithParamInterface<
-                                      std::pair<int, BloomFilterRFParameters>> {
+                                 public testing::WithParamInterface<
+                                     std::pair<int, BloomFilterRFParameters>> {
  protected:
   void SetUp() override {
     for (int i = 0; i < GetParam().first; ++i) {
@@ -111,7 +111,8 @@ INSTANTIATE_TEST_SUITE_P(
     }()));
 
 TEST(OneOff, RangeQuery) {
-  BloomRF<uint64_t, uint64_t> bf{BloomFilterRFParameters{16000, 0, {6,2,2,5}, {2,1,2,1}}};
+  BloomRF<uint64_t, uint64_t> bf{
+      BloomFilterRFParameters{16000, 0, {6, 2, 2, 5}, {2, 1, 2, 1}}};
   uint64_t key = 17183560791176864955ULL;
   // bf.add(key);
   // ASSERT_TRUE(bf.findRange(key - 100, key + 100));

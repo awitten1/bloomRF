@@ -28,7 +28,7 @@ inline BloomFilterRFParameters genParams(size_t filterSizeBytes,
   return BloomFilterRFParameters{filterSizeBytes, 0, layers, r};
 }
 
-template<typename T>
+template <typename T>
 std::ostringstream genParamString(const BloomRF<T>& bf) {
   std::ostringstream os;
   os << "Delta vector: ";
