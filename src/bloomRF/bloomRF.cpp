@@ -274,7 +274,7 @@ BloomRfImpl<T, UnderType>::BloomRfImpl(size_t size_,
     : hashes(delta_.size()),
       seed(seed_),
       words((size_ + sizeof(UnderType) - 1) / sizeof(UnderType)),
-      filter(words, 0),
+      filter(new T[words]{}),
       delta(delta_),
       shifts(delta.size()) {
   if (delta.empty()) {
