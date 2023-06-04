@@ -7,9 +7,8 @@ BloomRF is a probabilistic filter that supports range queries, in addition to po
 Probabilitic filters, such as BloomRF, are compact data structures that support approximate membership queries.  You can insert keys and query for keys, however, if the filter tells you it is storing a key, it may (with a low and configurable probability) be a false positive.
 BloomRF also allows asking "are we storing any key in the range 42 to 4711?" (for example).
 
-Probabilistic filters have many applications.  One well known application is in [LSM-Trees](https://www.cs.umb.edu/~poneil/lsmtree.pdf).
-In an LSM-Tree we store many files of keys in [SSTables](https://static.googleusercontent.com/media/research.google.com/en//archive/bigtable-osdi06.pdf). Probabilistic filters allow us to ask "are we storing this key in this SSTable?" without actually going to make the trek to disk, because the filter can fit in memory.  BloomRF allows us to ask "are we storing any key in this range on disk?" and therefore
-can improve the performance of LSM-Trees for serving range queries.
+Probabilistic filters have many applications.  One well known application is to [LSM-trees](https://www.cs.umb.edu/~poneil/lsmtree.pdf).
+An LSM-tree stores sorted runs of keys in files on disk.  A probabilistic filter allows us to ask "are we storing this key on disk?" without requiring us to make the trek to disk (because the compact filter can fit in memory).  This is a tremendous opimiztion because disk is slow!  EBS gp3 volumes have been measured as having an average latency of roughly 5ms (see [here](https://www.percona.com/blog/performance-of-various-ebs-storage-types-in-aws/)).  This is an eternity compared to processor speeds and the speed of memory. BloomRF allows us to ask "are we storing any key in this range on disk?" and therefore can dramatically improve the performance of LSM-Trees for serving range queries.  A good overview of LSM-trees can be found [here](https://cs-people.bu.edu/mathan/publications/icde23-tutorial.pdf).
 
 This project is a work in progress.  In particular, the memory management optimization described in section 7,
 and also the tuning advisor are not yet implemented.
