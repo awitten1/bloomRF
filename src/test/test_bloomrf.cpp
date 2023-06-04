@@ -139,12 +139,12 @@ INSTANTIATE_TEST_SUITE_P(
     }()));
 
 TEST(OneOff, RangeQuery2) {
-  BloomRF<uint64_t, uint64_t> bf{BloomFilterRFParameters{16000, 0, {8, 3, 3, 4}}};
+  BloomRF<uint64_t, uint64_t> bf{
+      BloomFilterRFParameters{16000, 0, {8, 3, 3, 4}}};
   uint64_t key = 3068990209559152388;
 
   bf.add(key);
   ASSERT_TRUE(bf.findRange(key - 9, key + 2));
-
 }
 
 TEST(OneOff, RangeQuery) {

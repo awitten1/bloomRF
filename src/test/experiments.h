@@ -19,29 +19,15 @@
 using filters::BloomFilterRFParameters;
 using filters::BloomRF;
 
-template <typename T, typename Generator>
+template <typename T>
 class ExperimentDriver {
 
- static_assert(std::is_same_v<T, decltype(std::declval<Generator>()())>);
-
  public:
-  ExperimentDriver(const BloomFilterRFParameters& params, Generator g)
-      : gen(rd()), bf{params}, keyGenerator(g) { }
+  ExperimentDriver(const BloomFilterRFParameters& params, std::function<T()> g, std::function<T()> qg)
+      : gen(rd()), bf{params}, keyGenerator(g), queryKeyGenerator(qg) { }
 
   std::pair<bool, bool> find(T data) {
     return {bf.find(data), std::binary_search(s.begin(), s.end(), data)};
-  }
-
-  std::pair<bool, bool> findRange(T low, T high) {
-    return {bf.findRange(low, high),
-        [=, this]() {
-          auto lower_bound = std::lower_bound(s.begin(), s.end(), low);
-          if (lower_bound == s.end()) {
-            return false;
-          }
-          return *lower_bound <= high;
-        }()
-    };
   }
 
   void insert(T data) {
@@ -65,7 +51,7 @@ class ExperimentDriver {
     std::mt19937 gen(rd());
 
     for (int i = 0; i < denominator; ++i) {
-      T q = keyGenerator();
+      T q = queryKeyGenerator();
       const auto& [inFilter, actuallyIn] = find(q);
       if (inFilter) {
         if (!actuallyIn) {
@@ -81,6 +67,7 @@ class ExperimentDriver {
         assert(inFilter);
       }
     }
+
     auto fp = static_cast<double>(false_positives) /
               static_cast<double>(false_positives + true_negative);
     return fp;
@@ -96,10 +83,14 @@ class ExperimentDriver {
     std::mt19937 gen(rd());
 
     for (int i = 0; i < denominator; ++i) {
-      T low = keyGenerator();
+      T low = queryKeyGenerator();
       T high = low + interval_size;
       if (high < low) high = std::numeric_limits<T>::max();
-      const auto& [inFilter, actuallyIn] = findRange(low, high);
+      bool inFilter = bf.findRange(low, high);
+      auto lb = std::lower_bound(s.begin(), s.end(), low);
+
+      bool actuallyIn = lb == s.end() ? false : *lb <= high;
+
       if (inFilter) {
         if (!actuallyIn) {
           ++false_positives;
@@ -109,11 +100,16 @@ class ExperimentDriver {
         ++true_negative;
       }
 
-      // Extra sanity check.
+      // Extra sanity checks.
       if (actuallyIn) {
         assert(inFilter);
       }
+      if (lb != s.end()) {
+        assert(low <= *lb);
+      }
     }
+
+    std::cout << "fp: " << false_positives << ", tn: " << true_negative << std::endl;
 
     auto fp =
         static_cast<double>(false_positives) / static_cast<double>(false_positives + true_negative);
@@ -126,5 +122,6 @@ class ExperimentDriver {
   std::mt19937 gen;
   BloomRF<T> bf;
   std::vector<T> s;
-  Generator keyGenerator;
+  std::function<T()> keyGenerator;
+  std::function<T()> queryKeyGenerator;
 };

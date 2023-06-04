@@ -21,5 +21,7 @@ Checks: '*,
     -cppcoreguidelines-pro-type-reinterpret-cast,
     -llvm-header-guard,
     -altera-unroll-loops,
-    -hicpp-signed-bitwise
+    -hicpp-signed-bitwise,
+    -fuchsia-statically-constructed-objects,
+    -google-readability-todo
     '
