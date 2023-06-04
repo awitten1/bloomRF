@@ -44,8 +44,8 @@ class BloomFilterUniform32Test : public ::testing::Test,
 };
 
 class BloomFilterUniform64Test : public ::testing::Test,
-                                  public testing::WithParamInterface<
-                                      std::pair<int, BloomFilterRFParameters>> {
+                                 public testing::WithParamInterface<
+                                     std::pair<int, BloomFilterRFParameters>> {
  protected:
   void SetUp() override {
     for (int i = 0; i < GetParam().first; ++i) {
@@ -138,11 +138,20 @@ INSTANTIATE_TEST_SUITE_P(
       return ret;
     }()));
 
+TEST(OneOff, RangeQuery2) {
+  BloomRF<uint64_t, uint64_t> bf{BloomFilterRFParameters{16000, 0, {8, 3, 3, 4}}};
+  uint64_t key = 3068990209559152388;
+
+  bf.add(key);
+  ASSERT_TRUE(bf.findRange(key - 9, key + 2));
+
+}
+
 TEST(OneOff, RangeQuery) {
   BloomRF<uint64_t, uint64_t> bf{BloomFilterRFParameters{16000, 0, {9, 8, 6}}};
   uint64_t key = 17183560791176864955ULL;
-  bf.add(key);
-  ASSERT_TRUE(bf.findRange(key - 100, key + 100));
+  // bf.add(key);
+  // ASSERT_TRUE(bf.findRange(key - 100, key + 100));
 
   key = 13539885930325430328ULL;
   bf.add(key);

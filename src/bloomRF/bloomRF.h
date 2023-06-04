@@ -112,7 +112,7 @@ class BloomRfImpl {
   size_t words;
 
   /// Distance between layers.
-  std::vector<size_t> delta;
+  const std::vector<size_t> delta;
 
   /// Prefix sums of delta.
   std::vector<size_t> shifts;

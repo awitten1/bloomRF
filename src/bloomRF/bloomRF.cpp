@@ -53,6 +53,7 @@ UnderType BloomRfImpl<T, UnderType>::bloomRFRemainder(T data,
                                                       int wordPos) const {
   UnderType offset =
       (data >> shifts[i]) & ((UnderType{1} << (delta[i] - 1)) - 1);
+  //std::cout << "offset: " << offset << std::endl;
   UnderType ret = (UnderType{1} << offset);
   assert(offset < (1 << (delta[i] - 1)));
 
@@ -74,7 +75,10 @@ size_t BloomRfImpl<T, UnderType>::hash(T data, size_t i) const {
 template <typename T, typename UnderType>
 void BloomRfImpl<T, UnderType>::add(T data) {
   for (size_t i = 0; i < hashes; ++i) {
+            //std::cout << " " << data << "," << i << std::endl;
+
     auto hash = hashToIndexAndBitMask(data, i);
+    //std::cout << hash.first << ", " << hash.second << std::endl;
     filter[hash.first] |= hash.second;
   }
 }
@@ -178,17 +182,25 @@ bool BloomRfImpl<T, UnderType>::findRange(T lkey, T hkey) const {
 
   for (int layer = hashes - 1; layer >= 0; --layer) {
     Checks new_checks(lkey, hkey, {});
+    // if (checks.getChecks().size() > 6) {
+    //   std::cout << "asdf: " << checks.getChecks().size() << std::endl;
+    // }
+    // assert(checks.getChecks().size() <= 6);
+    // std::cout << "layer: " << layer << std::endl;
     for (const auto& check : checks.getChecks()) {
+      // std::cout << "[" << check.low << "," << check.high << "] ";
 
       if (check.low < lkey || check.high > hkey) {
+        //std::cout << " " << check.low << "," << layer << std::endl;
         auto hash = hashToIndexAndBitMask(check.low, layer);
+        //std::cout << " :: " << layer << ": " << hash.first << ", " << hash.second << std::endl;
         if (filter[hash.first] & hash.second) {
           Checks check_for_interval{
-              lkey,
-              hkey,
-              {typename Checks::Check{check.low, check.high}}};
+              lkey, hkey, {typename Checks::Check{check.low, check.high}}};
           check_for_interval.advanceChecks(shifts[layer - 1], delta[layer - 1]);
           new_checks.concatenateChecks(check_for_interval);
+        } else {
+          //std::cout << "bad: " << check.low << std::endl;
         }
       } else {
         if (checkDIOfDecomposition(check.low, check.high, layer)) {
@@ -196,6 +208,8 @@ bool BloomRfImpl<T, UnderType>::findRange(T lkey, T hkey) const {
         }
       }
     }
+    // std::cout << std::endl;
+
 
     checks = std::move(new_checks);
   }
@@ -204,23 +218,39 @@ bool BloomRfImpl<T, UnderType>::findRange(T lkey, T hkey) const {
 }
 
 template <typename T, typename UnderType>
-void BloomRfImpl<T, UnderType>::Checks::advanceChecks(size_t shifts, size_t delta) {
+void BloomRfImpl<T, UnderType>::Checks::advanceChecks(size_t shifts,
+                                                      size_t delta) {
   T target_width = T{1} << shifts;
   std::vector<Check> new_checks;
+  assert(checks.size() == 1);
+
   for (const auto& check : checks) {
     assert(check.low < lkey || check.high > hkey);
-    T lower_limit = (std::max(lkey, check.low) / target_width) * target_width;
+
+    T bm_for_max = (T{1} << (shifts + delta - 1)) - 1;
+    T lower_limit = (std::max(check.low, lkey) / target_width) * target_width;
     T upper_limit = (std::min(hkey, check.high) / target_width) * target_width;
-    for (T counter = lower_limit; counter <= upper_limit && counter >= lower_limit; counter += target_width) {
+    //std::cout << std::endl << shifts << ", " << delta << std::endl;
+    for (T counter = lower_limit;
+         counter <= upper_limit && counter >= lower_limit;) {
       T curr_high = counter + target_width;
-      if (!new_checks.empty() &&
-               new_checks.back().low >> (shifts + delta - 1) ==
-                (counter >> (shifts + delta - 1)) && (curr_high <= hkey) &&
-               !(new_checks.back().low < lkey ||
-                 new_checks.back().high > hkey))  {
-        new_checks.back().high = static_cast<T>(curr_high - 1);
-      } else {
+      if (counter < lkey || curr_high > hkey) {
         new_checks.push_back({counter, static_cast<T>(curr_high - 1)});
+        counter = curr_high;
+      } else {
+        T next;
+        if (static_cast<T>(counter | bm_for_max) <= upper_limit) {
+          //std::cout << "big step" << std::endl;
+          next = static_cast<T>(counter | bm_for_max);
+          assert(counter <= next);
+        } else {
+          //std::cout << "small step" << std::endl;
+
+          next = upper_limit;
+          //assert(counter < next);
+        }
+        new_checks.push_back({counter, next});
+        counter = next + 1;
       }
     }
   }
@@ -294,6 +324,6 @@ template class BloomRfImpl<uint32_t>;
 template class BloomRfImpl<uint64_t>;
 template class BloomRfImpl<uint64_t, uint32_t>;
 
-} // namespace detail
+}  // namespace detail
 
 }  // namespace filters

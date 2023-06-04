@@ -20,5 +20,6 @@ Checks: '*,
     -readability-identifier-length,
     -cppcoreguidelines-pro-type-reinterpret-cast,
     -llvm-header-guard,
-    -altera-unroll-loops
+    -altera-unroll-loops,
+    -hicpp-signed-bitwise
     '
