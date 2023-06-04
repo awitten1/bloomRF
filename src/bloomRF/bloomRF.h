@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <iostream>
 #include <limits>
+#include <memory>
 #include <type_traits>
 #include <vector>
 #include <bit>
@@ -30,8 +31,11 @@ namespace detail {
 
 template <typename T, typename UnderType = uint64_t>
 class BloomRfImpl {
+  static_assert(std::is_unsigned_v<T>);
+  static_assert(std::is_unsigned_v<UnderType>);
+
  public:
-  using Container = std::vector<UnderType>;
+  using Container = std::unique_ptr<UnderType[]>;
 
   explicit BloomRfImpl(const BloomFilterRFParameters& params);
 
@@ -88,7 +92,7 @@ class BloomRfImpl {
   explicit BloomRfImpl(size_t size_, size_t seed_, std::vector<size_t> delta);
 
   /// Returns size in bits.
-  size_t numBits() const { return 8 * sizeof(UnderType) * filter.size(); }
+  size_t numBits() const { return 8 * sizeof(UnderType) * words; }
 
   /// Computes the ith PMHF hash of data. Only returns the word
   /// to which the data maps to.  Use bloomRFRemainder to retrieve the
@@ -123,7 +127,7 @@ class BloomRfImpl {
   Container filter;
 };
 
-}
+} // namespace detail
 
 //
 // A wrapper on BloomRFImpl.
