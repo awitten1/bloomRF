@@ -31,8 +31,11 @@ namespace detail {
 
 template <typename T, typename UnderType = uint64_t>
 class BloomRfImpl {
+  static_assert(std::is_unsigned_v<T>);
+  static_assert(std::is_unsigned_v<UnderType>);
+
  public:
-  using Container = std::unique_ptr<T[]>;
+  using Container = std::unique_ptr<UnderType[]>;
 
   explicit BloomRfImpl(const BloomFilterRFParameters& params);
 
