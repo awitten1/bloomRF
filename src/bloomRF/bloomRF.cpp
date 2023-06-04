@@ -180,7 +180,6 @@ bool BloomRfImpl<T, UnderType>::findRange(T lkey, T hkey) const {
   for (int layer = hashes - 1; layer >= 0; --layer) {
     Checks new_checks(lkey, hkey, {});
     for (const auto& check : checks.getChecks()) {
-
       if (check.low < lkey || check.high > hkey) {
         auto hash = hashToIndexAndBitMask(check.low, layer);
         if (filter[hash.first] & hash.second) {
