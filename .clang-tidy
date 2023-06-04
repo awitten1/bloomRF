@@ -19,5 +19,9 @@ Checks: '*,
     -llvmlibc-callee-namespace,
     -readability-identifier-length,
     -cppcoreguidelines-pro-type-reinterpret-cast,
-    -llvm-header-guard
+    -llvm-header-guard,
+    -altera-unroll-loops,
+    -hicpp-signed-bitwise,
+    -fuchsia-statically-constructed-objects,
+    -google-readability-todo
     '
