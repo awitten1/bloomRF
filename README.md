@@ -1,6 +1,6 @@
 # bloomRF
 
-This is an implementation of the EDBT best paper [bloomRF](https://openproceedings.org/2023/conf/edbt/paper-190.pdf).
+This is an implementation of the EDBT 2023 best paper [bloomRF](https://openproceedings.org/2023/conf/edbt/paper-190.pdf).
 BloomRF is a probabilistic filter that supports range queries, in addition to point queries.  Traditional
 [bloom filters](https://en.wikipedia.org/wiki/Bloom_filter) support only point queries.
 
