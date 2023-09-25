@@ -45,7 +45,8 @@ int main() {
         // Do random range queries of size 1e8.
 
         uint64_t low = rand();
-        bool stored = ubf.findRange(low, low + 1e8);
+        uint64_t high = low + 1e8;
+        bool stored = ubf.findRange(low, high);
         if (stored) {
             std::cout << "There may be a key in range [" << low << "," << high << "]" << std::endl;
         } else {
